@@ -50,3 +50,8 @@
 .grid-course-content{height:100%;width:100%;box-sizing:border-box}
 
 .hero-top{display:flex;align-items:center;justify-content:space-between;gap:14rpx}.hero-top .headline{font-size:46rpx;flex:1;min-width:0}.hero-tools{display:flex;flex-direction:column;gap:10rpx;flex-shrink:0}.hero-tools .hero-tool{margin:0;padding:0 17rpx;background:#e8f0fb;color:#245f9c;border:1rpx solid #d3e0ef;border-radius:13rpx;font-size:21rpx;line-height:55rpx;font-weight:600}.hero-tool text{margin-right:6rpx}
+
+.editor-head{justify-content:flex-start;align-items:center;margin:0 0 28rpx;padding:8rpx 0}.editor-head .back{width:auto!important;min-width:0;flex:0 0 auto;margin:0!important;padding:0 18rpx;border-radius:12rpx}.editor-title{flex:1;min-width:0}.editor{padding-top:0}
+
+.hero-tools .help-tool{border:2rpx solid #e4b645;background:#fff9e8;color:#8a651c}.help-bulb{filter:none;display:inline-block}.help-read .help-bulb{filter:grayscale(1);opacity:.45}.hero-tools .help-read{background:#fffdf5;color:#8b805f;border-color:#d8c78b}
+

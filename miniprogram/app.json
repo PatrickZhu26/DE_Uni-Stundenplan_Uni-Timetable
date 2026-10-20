@@ -2,7 +2,8 @@
   "pages": [
     "pages/index/index",
     "pages/archives/index",
-    "pages/grades/index"
+    "pages/grades/index",
+    "pages/help/index"
   ],
   "window": {
     "navigationBarTitleText": "我的课程表",

@@ -2,7 +2,7 @@
   <view wx:if="{{!isEditor}}">
     <view class="hero">
       <view wx:if="{{courses.length && (meta.school || meta.semester)}}" class="eyebrow">{{meta.school}}{{meta.school && meta.semester ? ' · ' : ''}}{{meta.semester}}</view>
-      <view class="hero-top"><view class="headline">我的课程表 <text class="star">✦</text></view><view class="hero-tools"><button class="hero-tool" bindtap="openArchives"><text>▣</text> 保存学期课表</button><button class="hero-tool" bindtap="openGrades"><text>◷</text> 成绩与学分</button></view></view>
+      <view class="hero-top"><view class="headline">我的课程表 <text class="star">✦</text></view><view class="hero-tools"><button class="hero-tool help-tool {{helpRead?'help-read':''}}" bindtap="openHelp"><text class="help-bulb">💡</text> 使用说明</button><button class="hero-tool" bindtap="openArchives"><text>▣</text> 保存学期课表</button><button class="hero-tool" bindtap="openGrades"><text>◷</text> 成绩与学分</button></view></view>
       <view class="subhead">周课表 · 教室地址 · 学习批注</view>
     </view>
     <view class="week-nav"><button class="navbtn" data-delta="-1" bindtap="changeWeek">‹</button><view class="week-center"><text class="week-heading">{{weekLabel}}</text><text class="week-year">{{weekStart}}</text></view><button class="navbtn" data-delta="1" bindtap="changeWeek">›</button><button class="today" bindtap="returnToday">本周</button></view>
@@ -37,14 +37,14 @@
         </view>
       </view>
     </view>
-    <scroll-view scroll-x="{{!dragging}}" class="timetable-scroll" enhanced show-scrollbar>
+    <scroll-view scroll-x scroll-left="{{gridScrollLeft}}" scroll-with-animation="{{false}}" bindscroll="onGridScroll" class="timetable-scroll" enhanced show-scrollbar>
       <view class="timetable" style="width:{{gridWidth}}px;">
         <view class="timetable-header"><view class="time-header">时间</view><view wx:for="{{gridDays}}" wx:key="day" class="grid-day-header {{item.holiday.vacation?'holiday-header':''}}" style="width:{{item.width}}px;"><text>{{item.name}}</text><text class="grid-date">{{item.date}}</text><text wx:if="{{item.holiday.cn}}" class="header-cn">{{item.holiday.cn}}</text><text wx:if="{{item.holiday.de}}" class="header-de">{{item.holiday.de}}</text><text wx:if="{{item.holiday.custom}}" class="header-custom">{{item.holiday.custom}}</text><text wx:if="{{item.holiday.cnWork}}" class="header-custom">中国调休上班日</text><text wx:if="{{item.holiday.suspended}}" class="header-custom">假期停课</text></view></view>
         <view class="grid-body" style="height:{{gridHeight}}px;"><view class="grid-time-axis" style="height:{{gridHeight}}px;"><view wx:for="{{gridHours}}" wx:key="label" class="hour-label" style="top:{{item.labelTop}}px;">{{item.label}}</view></view>
           <view wx:for="{{gridDays}}" wx:for-item="column" wx:key="day" id="column-{{column.day}}" data-day="{{column.day}}" bindlongpress="addAtBlank" class="grid-day-column {{column.holiday.suspended?'suspended-column':''}}" style="width:{{column.width}}px;height:{{gridHeight}}px;">
             <view wx:for="{{gridHours}}" wx:for-item="hour" wx:key="label" class="hour-rule" style="top:{{hour.top}}px;"></view>
-            <view wx:for="{{column.blocks}}" wx:for-item="course" wx:key="id" class="grid-course" style="top:{{course.top}}px;height:{{course.height}}px;left:{{course.leftPct}}%;width:{{course.widthPct}}%;border-left-color:{{course.courseColor}};" data-id="{{course.id}}" bindtap="openEdit" catchlongpress="dragStart" catchtouchmove="dragMove" bindtouchend="dragEnd" bindtouchcancel="dragCancel">
-              <scroll-view scroll-y="{{!dragging}}" class="grid-course-content">
+            <view wx:for="{{column.blocks}}" wx:for-item="course" wx:key="id" class="grid-course" style="top:{{course.top}}px;height:{{course.height}}px;left:{{course.leftPct}}%;width:{{course.widthPct}}%;border-left-color:{{course.courseColor}};" data-id="{{course.id}}" bindtap="openEdit" bindtouchstart="cardTouchStart" catchlongpress="dragStart" capture-catch:touchmove="{{dragging?'dragMove':''}}" bindtouchmove="dragMove" bindtouchend="dragEnd" bindtouchcancel="dragCancel">
+              <scroll-view id="card-scroll-{{course.id}}" data-id="{{course.id}}" scroll-y="{{!dragging}}" enhanced bounces="{{false}}" bindscroll="onCardScroll" class="grid-course-content"><view id="card-inner-{{course.id}}">
                 <view class="grid-course-title">📖 {{course.title}}</view>
                 <view class="grid-course-line">{{course.type}}<text wx:if="{{course.note}}"> · 📝 {{course.note}}</text></view>
                 <view class="grid-course-line grid-strong">{{course.start}}–{{course.end}}</view>
@@ -54,7 +54,7 @@
                 <view wx:if="{{course.teacher}}" class="grid-course-line">👤 {{course.teacher}}</view>
                 <view wx:if="{{course.conflict}}" class="grid-conflict">⚠ 同时段课程</view>
                 <view class="grid-course-line">点击查看 / 编辑 / 批注</view>
-              </scroll-view>
+              </view></scroll-view>
             </view>
           </view>
         </view>
@@ -71,7 +71,7 @@
       <view wx:for="{{group.items}}" wx:for-item="course" wx:key="id" class="course" style="border-left-color:{{course.courseColor}};"><view class="course-head"><view class="time">{{course.start}} — {{course.end}}</view><text class="type">{{course.type}}</text></view><view class="course-name">{{course.title}}</view><view wx:if="{{course.conflict}}" class="warning">⚠ 与当天其他课程时间重叠</view><view class="info grid-address" data-id="{{course.id}}" bindtap="navigateCourse">📍 {{course.building||'地址未填写'}} · {{course.room}}</view><view wx:if="{{course.teacher}}" class="info">👤 {{course.teacher}}</view><view class="mini-desc">每周 · {{course.from}} 至 {{course.to}}</view><view wx:if="{{course.note}}" class="note">📝 {{course.note}}</view><view class="actions"><button size="mini" class="act" data-id="{{course.id}}" bindtap="openEdit">编辑 / 批注</button><button size="mini" class="act" data-id="{{course.id}}" bindtap="copyLocation">复制地点</button><button size="mini" class="act" data-id="{{course.id}}" bindtap="copyCourse">复制详情</button></view></view>
     </view>
     <view wx:if="{{courses.length}}" class="controls"><view class="secondary-link" bindtap="toggleAll">{{showAll?'仅显示本周有效课程':'显示全部学期日期的课程'}}</view></view>
-    <view class="backup"><view class="backup-title">导入大学课表（PDF / 链接）</view><button class="import-button" bindtap="choosePDF" loading="{{importBusy}}" disabled="{{importBusy}}">选择 PDF 文件</button><input class="url-input" value="{{importUrl}}" bindinput="changeImportUrl" placeholder="公开 HTTPS PDF 下载链接"/><button class="import-button" bindtap="importPDFUrl" loading="{{importBusy}}" disabled="{{importBusy}}">识别输入的链接</button><view class="mini-desc">支持文本型PDF和本程序导出的PDF。公开链接可自动跟随跳转；登录页、普通HTML课表及扫描件暂不支持。最多16MB、30页。</view>
+    <view class="backup"><view class="backup-title">导入大学课表（PDF / 链接）</view><button class="import-button" bindtap="choosePDF" loading="{{importBusy}}" disabled="{{importBusy}}">选择 PDF 文件</button><view class="secondary-link" bindtap="localPDFHelp">手机本地 PDF 如何导入？</view><input class="url-input" value="{{importUrl}}" bindinput="changeImportUrl" placeholder="公开 HTTPS PDF 下载链接"/><button class="import-button" bindtap="importPDFUrl" loading="{{importBusy}}" disabled="{{importBusy}}">识别输入的链接</button><view class="mini-desc">支持文本型PDF和本程序导出的PDF。公开链接可自动跟随跳转；登录页、普通HTML课表及扫描件暂不支持。最多16MB、30页。</view>
       <view class="import-message">{{importMessage}}</view><view wx:for="{{importWarnings}}" wx:key="*this" class="notice">{{item}}</view>
       <view wx:if="{{importPreview.length}}"><view class="backup-title">核对识别结果 · {{importPreview.length}} 个课时</view><input class="url-input" value="{{importMeta.school}}" maxlength="200" data-field="school" bindinput="changeImportMeta" placeholder="学校缩写 / 名称（未识别时可填写）"/><input class="url-input" value="{{importMeta.semester}}" maxlength="100" data-field="semester" bindinput="changeImportMeta" placeholder="学期（未识别时可填写）"/><picker range="{{states}}" range-key="name" value="{{importStateIndex}}" bindchange="changeImportState"><view class="display-picker">{{states[importStateIndex].name}}　⌄</view></picker><picker range="{{importModes}}" value="{{importMode}}" bindchange="changeImportMode"><view class="display-picker">{{importModes[importMode]}}　⌄</view></picker>
         <view wx:for="{{importPreview}}" wx:key="id" class="preview-row"><view>{{dayNames[item.day]}} {{item.start}}–{{item.end}} · {{item.title}}</view><view class="mini-desc">{{item.type}} · {{item.from}} 至 {{item.to}}

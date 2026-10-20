@@ -7,3 +7,9 @@
 .module-frame.has-module{border:1px solid #cbdbea;border-radius:14rpx;margin:14rpx 8rpx;overflow:hidden;background:#fff}.module-parent{background:#f0f5fc}.module-parent .course-name{font-weight:700}.module-child{margin-left:24rpx;border-left:3rpx solid #c6d9ee;background:white}.module-relation{padding:15rpx 18rpx;color:#647e9b;background:#f5f8fc;font-size:21rpx;line-height:1.5}.group-edit-row{padding:16rpx}.preview-row.module-parent,.preview-row.module-child{padding:18rpx}.preview-row input{box-sizing:border-box}.credits-col{font-size:23rpx}
 
 .group-title{width:100%;box-sizing:border-box;line-height:1.5;min-height:72rpx}
+
+/* Native input height includes padding on iOS; reserve an explicit content height. */
+.preview-row input,input.field{width:100%;height:88rpx;min-height:88rpx;line-height:normal;padding:0 20rpx;box-sizing:border-box;margin:14rpx 0;font-size:27rpx}
+textarea.field{width:100%;min-height:100rpx;height:auto;padding:20rpx;box-sizing:border-box;line-height:1.65;font-size:27rpx}
+.group-title{min-height:110rpx!important}.note-field{min-height:120rpx!important;white-space:pre-wrap}.pair{align-items:stretch;flex-wrap:wrap}.input-cell{flex:1;min-width:180rpx}.pair .input-cell input{width:100%}.preview-row .label{margin-top:14rpx}.group-edit-row{padding:22rpx}.group-edit-row picker .field{min-height:88rpx;box-sizing:border-box;line-height:1.5;padding:24rpx 18rpx;white-space:normal}
+.dialog{padding:0;max-height:none;height:86vh}.dialog-content{padding:28rpx;box-sizing:border-box}.dialog .close{margin-bottom:24rpx}.course-note{white-space:pre-wrap;color:#546e8b;margin-top:8rpx}.group-edit-row .switch{min-height:60rpx}.preview-row.module-child{margin-left:14rpx}.import-box{padding:22rpx 14rpx}
