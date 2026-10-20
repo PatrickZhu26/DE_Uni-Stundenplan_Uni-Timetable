@@ -1,0 +1,37 @@
+{
+  "description": "完整课表：课程编辑、批注、冲突并排、拖动、地图入口、PDF导入及双语显示设置",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "miniprogram",
+  "appid": "wxbc5f40199fbc4e80",
+  "projectname": "Stundenplan-Final",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "miniprogramRoot": "miniprogram/",
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
+}

@@ -1,0 +1,9 @@
+const cloud=require('wx-server-sdk');const crypto=require('crypto');const {parsePDF}=require('./parser');const {fetchPublic,MAX}=require('./fetch');
+cloud.init({env:cloud.DYNAMIC_CURRENT_ENV});
+exports.main=async(event={})=>{try{const {OPENID}=cloud.getWXContext();if(!OPENID)throw Error('请从小程序中调用');const prefix='schedule/'+OPENID+'/';
+ if(event.action==='transcriptTicket'){const ext=event.kind==='pdf'?'pdf':'jpg';return {cloudPath:'transcripts/'+OPENID+'/'+crypto.randomBytes(16).toString('hex')+'.'+ext};}
+ if(event.action==='transcript'){if(typeof event.fileID!=='string'||!event.fileID.startsWith('cloud://')||!event.fileID.includes('/transcripts/'+OPENID+'/'))throw Error('只能识别本人上传的成绩单');const buffer=(await cloud.downloadFile({fileID:event.fileID})).fileContent;if(buffer.length>7*1024*1024)throw Error('成绩单最大7MB');const pdf=buffer.slice(0,5).toString()==='%PDF-';const image=buffer[0]===0xff&&buffer[1]===0xd8||buffer[0]===137&&buffer.slice(1,4).toString()==='PNG'||buffer.slice(0,2).toString()==='BM';if(!pdf&&!image)throw Error('请使用PDF、JPG或PNG成绩单');return await require('./transcript').parseTranscript(buffer,pdf?'pdf':'image');}
+ if(event.action==='uploadTicket')return {cloudPath:prefix+crypto.randomBytes(16).toString('hex')+'.pdf'};
+ let buffer;if(event.fileID){if(typeof event.fileID!=='string'||!event.fileID.startsWith('cloud://')||!event.fileID.includes('/'+prefix))throw Error('只能识别本人上传的临时课表');buffer=(await cloud.downloadFile({fileID:event.fileID})).fileContent;}else if(typeof event.url==='string'&&event.url.length<=4096){buffer=await fetchPublic(event.url);}else throw Error('请选择PDF或填写公开PDF链接');
+ if(buffer.length>MAX)throw Error('PDF不能超过16MB');if(buffer.slice(0,5).toString()!=='%PDF-')throw Error('链接返回的不是PDF文件。学校登录页或普通网页链接不能直接识别，请下载PDF后上传。');return await parsePDF(buffer);
+ }catch(e){console.error('parseSchedule:',e.stack||e.message);return {courses:[],error:e.message||'识别失败，请重试',diagnostic:{runtime:process.version,stack:e.stack}};}};

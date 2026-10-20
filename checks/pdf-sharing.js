@@ -1,0 +1,11 @@
+const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
+const root=path.resolve(__dirname,'..'),PDF=require('../miniprogram/utils/pdf-export');
+assert.equal(PDF.shortRoom('11906.01.030 (H21)'),'H21');assert.equal(PDF.shortRoom('H18 Hörsaal 18'),'H18');assert.equal(PDF.shortRoom('K2-119'),'K2-119');assert.equal(PDF.shortRoom('11901.U1.245 · K2-119'),'K2-119');
+assert.deepEqual(PDF.overviewFacts({start:'08:15',end:'09:45',room:'11906.01.030 (H21)',from:'2026-10-13',to:'2027-02-02'}),['08:15-09:45','H21','2026-10-13','至 2027-02-02']);
+let page,shared,dialog,opened,platform='ios',exists=true;
+const wx={getFileSystemManager:()=>({accessSync:()=>{if(!exists)throw Error('missing');}}),getDeviceInfo:()=>({platform}),canIUse:()=>true,shareFileMessage:o=>shared=o,showModal:o=>dialog=o,openDocument:o=>opened=o,showToast:()=>{}};
+vm.runInNewContext(fs.readFileSync(path.join(root,'miniprogram/pages/index/index.js'),'utf8'),{require:p=>require(path.resolve(root,'miniprogram/pages/index',p)),Page:p=>page=p,wx,console,setTimeout});
+page.data.lastPDF='wxfile://usr/Stundenplan.pdf';page.sharePDF();assert.equal(shared.filePath,page.data.lastPDF);assert.equal(shared.fileName,'我的课程表.pdf');shared.fail({errMsg:'shareFileMessage:fail cancel'});assert(!dialog);
+platform='devtools';shared=null;page.sharePDF();assert(!shared);assert(dialog.content.includes('开发者工具不支持'));dialog.success({confirm:true});assert.equal(opened.fileType,'pdf');assert.equal(opened.showMenu,true);
+platform='ios';exists=false;page.sharePDF();assert.equal(dialog.title,'PDF文件已失效');
+console.log('PASS: overview time/classroom/date fields, actual PDF file share arguments, simulator guidance, cancel and expired file');

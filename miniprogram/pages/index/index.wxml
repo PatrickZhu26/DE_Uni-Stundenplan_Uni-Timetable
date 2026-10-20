@@ -1,0 +1,98 @@
+<view class="page">
+  <view wx:if="{{!isEditor}}">
+    <view class="hero">
+      <view wx:if="{{courses.length && (meta.school || meta.semester)}}" class="eyebrow">{{meta.school}}{{meta.school && meta.semester ? ' · ' : ''}}{{meta.semester}}</view>
+      <view class="hero-top"><view class="headline">我的课程表 <text class="star">✦</text></view><view class="hero-tools"><button class="hero-tool" bindtap="openArchives"><text>▣</text> 保存学期课表</button><button class="hero-tool" bindtap="openGrades"><text>◷</text> 成绩与学分</button></view></view>
+      <view class="subhead">周课表 · 教室地址 · 学习批注</view>
+    </view>
+    <view class="week-nav"><button class="navbtn" data-delta="-1" bindtap="changeWeek">‹</button><view class="week-center"><text class="week-heading">{{weekLabel}}</text><text class="week-year">{{weekStart}}</text></view><button class="navbtn" data-delta="1" bindtap="changeWeek">›</button><button class="today" bindtap="returnToday">本周</button></view>
+    <scroll-view scroll-x class="day-scroll"><view class="days">
+      <view wx:for="{{dayTabs}}" wx:key="day" class="day {{item.vacation?'vacation':(item.active?'active':'')}} {{item.vacation&&item.active?'vacation-selected':''}}" data-day="{{item.day}}" bindtap="changeDay">
+        <text>{{item.name}}</text><text class="date">{{item.dateLabel}}</text><view class="holiday-dots"><view wx:if="{{item.cn}}" class="holiday-dot cn-dot"></view><view wx:if="{{item.de}}" class="holiday-dot de-dot"></view></view>
+      </view>
+    </view></scroll-view>
+    <view class="holiday-legend"><text class="legend-cn">● 中国假日</text><text class="legend-de">● 德国假日</text><text>假期深蓝 · 选中显示细灰边</text></view>
+    <view wx:if="{{holidayNotice}}" class="notice">{{holidayNotice}}</view>
+    <view class="grid-heading"><view class="section-title">完整周课表</view><view class="mini-desc">左右滑动 · 冲突课程并排 · 长按课程移动 · 长按空白时段添加</view></view>
+    <view class="display-settings">
+      <view class="settings-toggle" bindtap="toggleSettings"><text>课表显示设置 · Anzeige</text><text>{{settingsOpen?'⌃':'⌄'}}</text></view>
+      <view wx:if="{{settingsOpen}}" class="settings-content">
+        <view class="display-times">
+          <view class="display-time"><view class="field-label">开始时间 · Uhrzeit von</view><picker mode="time" value="{{viewDraft.start}}" data-field="start" bindchange="changeViewTime"><view class="display-picker">{{viewDraft.start}}　⌄</view></picker></view>
+          <view class="display-time"><view class="field-label">结束时间 · Uhrzeit bis</view><picker mode="time" value="{{viewDraft.end}}" data-field="end" bindchange="changeViewTime"><view class="display-picker">{{viewDraft.end}}　⌄</view></picker></view>
+        </view>
+        <view class="field-label">显示星期 · Wochentage</view><checkbox-group bindchange="changeViewDays" class="display-days"><label wx:for="{{viewDayOptions}}" wx:key="value" class="display-day"><checkbox value="{{item.value}}" checked="{{item.checked}}" color="#216cbd"/><text>{{item.label}}</text></label></checkbox-group>
+        <view class="display-actions"><button bindtap="applyView">应用并保存</button><button bindtap="resetView">恢复默认</button></view>
+        <view wx:if="{{courses.length}}" class="school-settings"><view class="field-label">学校缩写与学期（可核对修改）</view><input value="{{meta.school}}" maxlength="200" data-field="school" bindinput="changeMeta" placeholder="学校缩写或名称"/><input value="{{meta.semester}}" maxlength="100" data-field="semester" bindinput="changeMeta" placeholder="例如 Wintersemester 2026/27"/><button class="small-secondary" bindtap="saveMeta">保存学校与学期</button></view>
+        <view class="holiday-settings">
+          <view class="backup-title">节假日自设置 · Feiertage &amp; Ferien</view>
+          <view class="mini-desc">假期设置即时保存。法定日与学校放假时间可不同，自行添加实际校历假期。</view>
+          <view class="field-label setting-label">学校所在德国州 · Bundesland</view><picker range="{{states}}" range-key="name" value="{{stateIndex}}" bindchange="changeState"><view class="display-picker">{{states[stateIndex].name}}　⌄</view></picker>
+          <checkbox-group wx:if="{{localOptions.length}}" bindchange="changeLocal"><label wx:for="{{localOptions}}" wx:key="value" class="local-option"><checkbox value="{{item.value}}" checked="{{item.checked}}"/><text>{{item.label}}</text></label><view class="mini-desc">这些假日只在部分市镇适用，请按学校所在地确认后勾选。</view></checkbox-group>
+          <view class="switch-row"><text>德国法定假日停课</text><switch checked="{{holiday.skipDE}}" data-field="skipDE" bindchange="changeHolidaySwitch" color="#176751"/></view>
+          <view class="switch-row"><text>中国假日停课</text><switch checked="{{holiday.skipCN}}" data-field="skipCN" bindchange="changeHolidaySwitch" color="#176751"/></view>
+          <view class="mini-desc">中国红点按2026年官方放假安排（含调休休息日）显示；调休上班日仅注释，不自动改动德国课程。2025–2035年支持法定节日本日（含农历节日），其中除2026年外的连休/调休须按官方通知补充。</view>
+          <view class="holiday-form"><input maxlength="100" value="{{holidayForm.name}}" data-field="name" bindinput="changeHolidayForm" placeholder="假期名称，如 Weihnachtsferien / 春节假期"/><view class="display-times"><picker class="display-time" mode="date" value="{{holidayForm.from}}" data-field="from" bindchange="changeHolidayForm"><view class="display-picker">从 {{holidayForm.from}}</view></picker><picker class="display-time" mode="date" value="{{holidayForm.to}}" data-field="to" bindchange="changeHolidayForm"><view class="display-picker">至 {{holidayForm.to}}</view></picker></view><view class="switch-row"><text>这段假期停课</text><switch checked="{{holidayForm.suspend}}" data-field="suspend" bindchange="changeHolidayForm" color="#176751"/></view><button class="small-secondary" bindtap="addHoliday">添加自定义假期</button></view>
+          <view wx:for="{{holiday.custom}}" wx:key="id" class="custom-holiday"><view><text>{{item.name}}</text><view class="mini-desc">{{item.from}} — {{item.to}} · {{item.suspend?'停课':'仅标记'}}</view></view><button size="mini" data-id="{{item.id}}" bindtap="removeHoliday">删除</button></view>
+        </view>
+      </view>
+    </view>
+    <scroll-view scroll-x="{{!dragging}}" class="timetable-scroll" enhanced show-scrollbar>
+      <view class="timetable" style="width:{{gridWidth}}px;">
+        <view class="timetable-header"><view class="time-header">时间</view><view wx:for="{{gridDays}}" wx:key="day" class="grid-day-header {{item.holiday.vacation?'holiday-header':''}}" style="width:{{item.width}}px;"><text>{{item.name}}</text><text class="grid-date">{{item.date}}</text><text wx:if="{{item.holiday.cn}}" class="header-cn">{{item.holiday.cn}}</text><text wx:if="{{item.holiday.de}}" class="header-de">{{item.holiday.de}}</text><text wx:if="{{item.holiday.custom}}" class="header-custom">{{item.holiday.custom}}</text><text wx:if="{{item.holiday.cnWork}}" class="header-custom">中国调休上班日</text><text wx:if="{{item.holiday.suspended}}" class="header-custom">假期停课</text></view></view>
+        <view class="grid-body" style="height:{{gridHeight}}px;"><view class="grid-time-axis" style="height:{{gridHeight}}px;"><view wx:for="{{gridHours}}" wx:key="label" class="hour-label" style="top:{{item.labelTop}}px;">{{item.label}}</view></view>
+          <view wx:for="{{gridDays}}" wx:for-item="column" wx:key="day" id="column-{{column.day}}" data-day="{{column.day}}" bindlongpress="addAtBlank" class="grid-day-column {{column.holiday.suspended?'suspended-column':''}}" style="width:{{column.width}}px;height:{{gridHeight}}px;">
+            <view wx:for="{{gridHours}}" wx:for-item="hour" wx:key="label" class="hour-rule" style="top:{{hour.top}}px;"></view>
+            <view wx:for="{{column.blocks}}" wx:for-item="course" wx:key="id" class="grid-course" style="top:{{course.top}}px;height:{{course.height}}px;left:{{course.leftPct}}%;width:{{course.widthPct}}%;border-left-color:{{course.courseColor}};" data-id="{{course.id}}" bindtap="openEdit" catchlongpress="dragStart" catchtouchmove="dragMove" bindtouchend="dragEnd" bindtouchcancel="dragCancel">
+              <scroll-view scroll-y="{{!dragging}}" class="grid-course-content">
+                <view class="grid-course-title">📖 {{course.title}}</view>
+                <view class="grid-course-line">{{course.type}}<text wx:if="{{course.note}}"> · 📝 {{course.note}}</text></view>
+                <view class="grid-course-line grid-strong">{{course.start}}–{{course.end}}</view>
+                <view class="grid-course-line">每周 · {{course.from}} 至 {{course.to}}</view>
+                <view class="grid-course-line grid-address" data-id="{{course.id}}" catchtap="navigateCourse">📍 {{course.room||'教室未填写'}} · 地图选项 ↗</view>
+                <view wx:if="{{course.building}}" class="grid-course-line grid-address" data-id="{{course.id}}" catchtap="navigateCourse">{{course.building}}</view>
+                <view wx:if="{{course.teacher}}" class="grid-course-line">👤 {{course.teacher}}</view>
+                <view wx:if="{{course.conflict}}" class="grid-conflict">⚠ 同时段课程</view>
+                <view class="grid-course-line">点击查看 / 编辑 / 批注</view>
+              </scroll-view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <view wx:if="{{dragging&&dragGhost}}" class="drag-ghost" style="left:{{dragGhost.x}}px;top:{{dragGhost.y}}px;">{{dragGhost.title}}</view>
+    <view class="add-section"><button class="add-btn" bindtap="openAdd">＋ 添加</button></view>
+    <view wx:if="{{totalConflicts}}" class="conflict-summary">{{totalConflicts}} 个冲突课程 · 以下按日期列出</view>
+    <view wx:for="{{dayGroups}}" wx:for-item="group" wx:key="day" class="day-detail-group">
+      <view wx:if="{{group.conflictCount}}" class="day-conflict">{{group.conflictCount}} 个冲突课程</view>
+      <view class="section-title">{{group.name}}</view><view class="section-hint">{{group.sessionCount}} 个课时 · {{group.courseCount}} 门课</view>
+      <view wx:if="{{group.holiday.suspended}}" class="notice">假期停课：{{group.holiday.de}} {{group.holiday.cn}} {{group.holiday.custom}}。以下保留原课程信息供查看和编辑。</view>
+      <view wx:if="{{!group.items.length}}" class="empty">这一天尚无课程，可点击“添加”或上传课表。</view>
+      <view wx:for="{{group.items}}" wx:for-item="course" wx:key="id" class="course" style="border-left-color:{{course.courseColor}};"><view class="course-head"><view class="time">{{course.start}} — {{course.end}}</view><text class="type">{{course.type}}</text></view><view class="course-name">{{course.title}}</view><view wx:if="{{course.conflict}}" class="warning">⚠ 与当天其他课程时间重叠</view><view class="info grid-address" data-id="{{course.id}}" bindtap="navigateCourse">📍 {{course.building||'地址未填写'}} · {{course.room}}</view><view wx:if="{{course.teacher}}" class="info">👤 {{course.teacher}}</view><view class="mini-desc">每周 · {{course.from}} 至 {{course.to}}</view><view wx:if="{{course.note}}" class="note">📝 {{course.note}}</view><view class="actions"><button size="mini" class="act" data-id="{{course.id}}" bindtap="openEdit">编辑 / 批注</button><button size="mini" class="act" data-id="{{course.id}}" bindtap="copyLocation">复制地点</button><button size="mini" class="act" data-id="{{course.id}}" bindtap="copyCourse">复制详情</button></view></view>
+    </view>
+    <view wx:if="{{courses.length}}" class="controls"><view class="secondary-link" bindtap="toggleAll">{{showAll?'仅显示本周有效课程':'显示全部学期日期的课程'}}</view></view>
+    <view class="backup"><view class="backup-title">导入大学课表（PDF / 链接）</view><button class="import-button" bindtap="choosePDF" loading="{{importBusy}}" disabled="{{importBusy}}">选择 PDF 文件</button><input class="url-input" value="{{importUrl}}" bindinput="changeImportUrl" placeholder="公开 HTTPS PDF 下载链接"/><button class="import-button" bindtap="importPDFUrl" loading="{{importBusy}}" disabled="{{importBusy}}">识别输入的链接</button><view class="mini-desc">支持文本型PDF和本程序导出的PDF。公开链接可自动跟随跳转；登录页、普通HTML课表及扫描件暂不支持。最多16MB、30页。</view>
+      <view class="import-message">{{importMessage}}</view><view wx:for="{{importWarnings}}" wx:key="*this" class="notice">{{item}}</view>
+      <view wx:if="{{importPreview.length}}"><view class="backup-title">核对识别结果 · {{importPreview.length}} 个课时</view><input class="url-input" value="{{importMeta.school}}" maxlength="200" data-field="school" bindinput="changeImportMeta" placeholder="学校缩写 / 名称（未识别时可填写）"/><input class="url-input" value="{{importMeta.semester}}" maxlength="100" data-field="semester" bindinput="changeImportMeta" placeholder="学期（未识别时可填写）"/><picker range="{{states}}" range-key="name" value="{{importStateIndex}}" bindchange="changeImportState"><view class="display-picker">{{states[importStateIndex].name}}　⌄</view></picker><picker range="{{importModes}}" value="{{importMode}}" bindchange="changeImportMode"><view class="display-picker">{{importModes[importMode]}}　⌄</view></picker>
+        <view wx:for="{{importPreview}}" wx:key="id" class="preview-row"><view>{{dayNames[item.day]}} {{item.start}}–{{item.end}} · {{item.title}}</view><view class="mini-desc">{{item.type}} · {{item.from}} 至 {{item.to}}
+{{item.room}} · {{item.building}}
+{{item.teacher}}</view><view class="actions"><button size="mini" data-index="{{index}}" bindtap="editPreview">核对 / 编辑</button><button size="mini" data-index="{{index}}" bindtap="removePreview">移除</button></view></view><button class="import-button" bindtap="confirmPDFImport">确认导入并保存原版</button>
+      </view><view wx:if="{{extractedText}}"><view class="secondary-link" bindtap="toggleExtracted">{{showExtracted?'收起提取文字':'查看PDF提取文字'}}</view><text wx:if="{{showExtracted}}" selectable class="extracted-text">{{extractedText}}</text></view>
+    </view>
+    <view class="backup"><view class="backup-title">课表数据管理</view><button class="import-button" bindtap="exportSchedule" loading="{{exportBusy}}" disabled="{{exportBusy}}">导出完整课表</button><button wx:if="{{lastPDF}}" class="small-secondary" bindtap="sharePDF">发送 PDF 给微信好友</button><button wx:if="{{lastPDF}}" class="small-secondary" bindtap="previewPDF">预览 / 保存 PDF</button><view class="backup-buttons"><button bindtap="exportData">复制JSON备份</button><button bindtap="importData">导入JSON备份</button><button bindtap="reset">恢复导入原版</button></view><view class="mini-desc">PDF用于查看和保存，包含全部课程详情。本程序导出的PDF也可重新导入。JSON备份用于完整恢复课程、批注、假期和显示设置。“恢复导入原版”回到最近一次确认导入时的课表。</view></view>
+  </view>
+  <view wx:else class="editor"><view class="editor-head"><button class="back" bindtap="closeEditor">‹ 返回</button><view class="editor-title">{{previewEditIndex>=0?'核对识别课程':(editingId?'修改课程':'添加课程')}}</view></view>
+    <view class="field"><view class="field-label">课程名称 *</view><input value="{{form.title}}" data-field="title" bindinput="changeText" placeholder="例如：Robotik"/></view>
+    <view class="field"><view class="field-label">课程类型</view><picker mode="selector" range="{{typeOptions}}" value="{{formTypeIndex}}" data-field="type" bindchange="changePicker"><view class="picker">{{form.type}}　⌄</view></picker></view>
+    <view class="field"><view class="field-label">星期</view><picker mode="selector" range="{{dayNames}}" value="{{form.day}}" data-field="day" bindchange="changePicker"><view class="picker">{{dayNames[form.day]}}　⌄</view></picker></view>
+    <view class="pair"><view class="field half"><view class="field-label">开始时间 *</view><picker mode="time" value="{{form.start}}" data-field="start" bindchange="changePicker"><view class="picker">{{form.start}}</view></picker></view><view class="field half"><view class="field-label">结束时间 *</view><picker mode="time" value="{{form.end}}" data-field="end" bindchange="changePicker"><view class="picker">{{form.end}}</view></picker></view></view>
+    <view class="pair"><view class="field half"><view class="field-label">开始日期 *</view><picker mode="date" value="{{form.from}}" data-field="from" bindchange="changePicker"><view class="picker">{{form.from}}</view></picker></view><view class="field half"><view class="field-label">结束日期 *</view><picker mode="date" value="{{form.to}}" data-field="to" bindchange="changePicker"><view class="picker">{{form.to}}</view></picker></view></view>
+    <view class="field"><view class="field-label">教学楼 / 地址</view><input value="{{form.building}}" data-field="building" bindinput="changeText" placeholder="教学楼或街道地址"/></view>
+    <view class="field"><view class="field-label">教室编号</view><input value="{{form.room}}" data-field="room" bindinput="changeText" placeholder="例如 H5 / 11501.01.104"/></view>
+    <view class="field"><view class="field-label">任课教师</view><input value="{{form.teacher}}" data-field="teacher" bindinput="changeText" placeholder="教授 / 教师姓名"/></view>
+    <view class="field"><view class="field-label">我的批注</view><textarea maxlength="3000" value="{{form.note}}" data-field="note" bindinput="changeText" placeholder="课前准备、作业、考试提醒、临时变动……" auto-height class="memo"/></view>
+    <view class="field"><view class="field-label">课程标签颜色</view><picker mode="selector" range="{{colorNames}}" value="{{form.color}}" data-field="color" bindchange="changePicker"><view class="picker">{{colorNames[form.color]}}　⌄</view></picker></view>
+    <button class="save" bindtap="saveCourse">保存课程与批注</button><button wx:if="{{editingId}}" class="delete" bindtap="deleteCourse">删除此课时</button>
+  </view>
+  <canvas type="2d" id="exportCanvas" class="export-canvas"></canvas>
+</view>
