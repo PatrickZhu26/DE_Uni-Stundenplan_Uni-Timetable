@@ -5,6 +5,23 @@ const tPattern=/^(\d{2}:\d{2})\s*(?:Uhr)?$/;
 const dateRange=/(\d{1,2}\.\d{1,2}\.\d{2,4})\s*[-–]\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/;
 const iso=s=>{const [d,m,y]=s.split('.');return (y.length===2?'20'+y:y)+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0');};
 const clean=s=>s.replace(/\s+([,;])/g,'$1').replace(/\s*\/\s*/g,'/').replace(/\s+/g,' ').trim();
+const courseType=/(?:,\s*)(Vorlesung|Übung|Tutorium|Seminar|Praktikum|Kolloquium|Sonstige Lehrveranstaltung|Sonstiges)\b/i;
+const singleDate=/\bEinzeltermin\s*[:–-]?\s*(\d{1,2}\.\d{1,2}\.\d{2,4})\b/i;
+function parseDates(tail) {
+ const single=tail.match(singleDate);
+ if(single){
+  const date=iso(single[1]);
+  return {from:date,to:date,weekInterval:1,details:tail.slice(single.index+single[0].length).trim()};
+ }
+ const range=tail.match(dateRange);
+ if(!range)return null;
+ const rhythm=tail.slice(0,range.index);
+ let weekInterval=1;
+ if(/\b14[\s.–-]*t[äa]g|zweiwöchentlich/i.test(rhythm))weekInterval=2;
+ else if(/dreiwöchentlich/i.test(rhythm))weekInterval=3;
+ else if(/vierwöchentlich/i.test(rhythm))weekInterval=4;
+ return {from:iso(range[1]),to:iso(range[2]),weekInterval,details:tail.slice(range.index+range[0].length).trim()};
+}
 function metaFrom(items){const text=items.map(x=>x.s).join(' ');const schools=[[/Friedrich-Alexander-Universität|\bFAU\b/i,'FAU','BY'],[/Technische Universität München|\bTUM\b/i,'TUM','BY'],[/Ludwig-Maximilians-Universität|\bLMU\b/i,'LMU','BY'],[/RWTH|Rheinisch-Westfälische Technische Hochschule/i,'RWTH Aachen','NW'],[/Karlsruher Institut für Technologie|\bKIT\b/i,'KIT','BW'],[/Technische Universität Dresden|TU Dresden/i,'TU Dresden','SN'],[/Universität zu Köln/i,'Universität zu Köln','NW'],[/Universität Stuttgart/i,'Universität Stuttgart','BW']];const known=schools.find(x=>x[0].test(text));const university=items.find(x=>/Universität|Hochschule|University|Universit[äa]t/i.test(x.s));const term=text.match(/(Wintersemester|Sommersemester|WiSe|SoSe|WS|SS)\s*(\d{4}(?:\s*[/–-]\s*\d{2,4})?)/i);return {school:known?known[1]:university?university.s.trim():'',semester:term?((/Winter|WiSe|WS/i.test(term[1])?'Wintersemester ':'Sommersemester ')+term[2].replace(/\s/g,'')):'',state:known?known[2]:''};}
 function parseItems(pages){const courses=[],warnings=[];let seq=0;
  for(const items of pages){let currentDay=-1;const pairs=[];
@@ -14,13 +31,36 @@ function parseItems(pages){const courses=[],warnings=[];let seq=0;
    if(begin<0){for(let j=i-1;j>=Math.max(0,i-10);j--){if(dayPattern.test(items[j].s)||/Durchführende|Dozent|Status:/.test(items[j].s))break;begin=j;}}
    if(begin<0)continue;pairs.push({begin,time:i,start:a[1],end:b[1],day:currentDay});i++;
   }
-  pairs.forEach((p,n)=>{let stop=n+1<pairs.length?pairs[n+1].begin:items.length;for(let j=p.time+2;j<stop;j++){if(dayPattern.test(items[j].s)||/^(Einzeltermin|Erstellt am|Stundenplan für|Seite$)/.test(items[j].s)){stop=j;break;}}
-   const heading=clean(items.slice(p.begin,p.time).map(x=>x.s).join(' ')).replace(/^\d+\)\s*/, '');const match=heading.match(/,\s*(Vorlesung|Übung|Tutorium|Seminar|Praktikum|Kolloquium)\b/);if(!match){warnings.push('有课程缺少可识别的类型/标题，请核对原PDF');return;}
-   let title=heading.slice(0,match.index).replace(/^Vorlesung\s+/,'').trim();if(!title)return;const tail=clean(items.slice(p.time+2,stop).map(x=>x.s).join(' '));const dr=tail.match(dateRange);if(!dr){warnings.push(title+'：缺少日期范围，未自动加入');return;}
-   const after=tail.slice(dr.index+dr[0].length).trim();const loc=after.split(/Status:|Durchführende/)[0].trim();const room=loc.match(/^(\d{5}\.[A-Za-z0-9]{2}\.\d{3}\s*\([^)]*\))/);const teacher=after.match(/Dozentinnen\s*\/\s*Dozenten:\s*(.*)/);const pg=heading.match(/\d+\.\s*PG/);courses.push({id:'parsed_'+seq++,day:p.day,title,type:match[1],start:p.start,end:p.end,from:iso(dr[1]),to:iso(dr[2]),room:room?room[1]:'',building:room?loc.slice(room[0].length).replace(/^\s*,\s*/,''):loc,teacher:teacher?teacher[1].replace(/\s+\d+\)\s*$/,''):'',note:pg?pg[0]:'',color:seq%7});
+  pairs.forEach((p,n)=>{
+   let stop=n+1<pairs.length?pairs[n+1].begin:items.length;
+   for(let j=p.time+2;j<stop;j++){
+    const line=items[j].s;
+    // The legend starts with the same word as a one-off appointment.
+    const legend=/^Einzeltermin\s*$/.test(line)&&/^wöchentlich\s*$/.test(items[j+1]?.s||'');
+    if(dayPattern.test(line)||legend||/^(Erstellt am|Stundenplan für|Seite$)/.test(line)){stop=j;break;}
+   }
+   const heading=clean(items.slice(p.begin,p.time).map(x=>x.s).join(' ')).replace(/^\d+\)\s*/, '');
+   const match=heading.match(courseType);
+   if(!match){warnings.push('有课程缺少可识别的类型或标题，请核对原 PDF');return;}
+   const title=heading.slice(0,match.index).replace(/^Vorlesung\s+/,'').trim();
+   if(!title)return;
+   const tail=clean(items.slice(p.time+2,stop).map(x=>x.s).join(' '));
+   const dates=parseDates(tail);
+   if(!dates){warnings.push(title+'：缺少可识别的上课日期，未自动加入');return;}
+   const {from,to,weekInterval,details}=dates;
+   const loc=details.split(/Status:|Durchführende/)[0].trim();
+   const room=loc.match(/^(\d{5}\.[A-Za-z0-9]{2}\.\d{3}\s*\([^)]*\))/);
+   const teacher=details.match(/Dozentinnen\s*\/\s*Dozenten:\s*(.*)/);
+   const pg=heading.match(/\d+\.\s*PG/);
+   courses.push({
+    id:'parsed_'+seq++,day:from===to?(new Date(from).getUTCDay()+6)%7:p.day,
+    title,type:/^Sonstig/i.test(match[1])?'Sonstiges':match[1],start:p.start,end:p.end,from,to,weekInterval,
+    room:room?room[1]:'',building:room?loc.slice(room[0].length).replace(/^\s*,\s*/,''):loc,
+    teacher:teacher?teacher[1].replace(/\s+\d+\)\s*$/,''):'',note:pg?pg[0]:'',color:seq%7
+   });
   });
  }
- const unique=[];const seen=new Set();courses.forEach(c=>{const key=[c.day,c.title,c.type,c.start,c.end,c.from,c.to].join('|');if(!seen.has(key)){seen.add(key);unique.push(c);}});
+ const unique=[];const seen=new Set();courses.forEach(c=>{const key=[c.day,c.title,c.type,c.start,c.end,c.from,c.to,c.weekInterval,c.room,c.building].join('|');if(!seen.has(key)){seen.add(key);unique.push(c);}});
  return {courses:unique.sort((a,b)=>a.day-b.day||a.start.localeCompare(b.start)),meta:metaFrom(pages.flat()),warnings:[...new Set(warnings)],adapter:'text-blocks'};
 }
 async function parsePDF(buffer){

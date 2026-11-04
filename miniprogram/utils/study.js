@@ -1,12 +1,11 @@
 const M = require('./model');
 const PDF = require('./pdf-export');
+const Berlin = require('./berlin-clock');
 const windowContexts = new WeakMap();
 
 function deadline(task, kind) {
-  const d = M.date(task.date);
   const value = kind === 'exam' ? task.end || task.time : task.time;
-  d.setHours(Number(value.slice(0, 2)), Number(value.slice(3, 5)), 0, 0);
-  return d.getTime();
+  return Berlin.at(task.date, value);
 }
 
 function active(items, kind, now = Date.now()) {
@@ -14,12 +13,43 @@ function active(items, kind, now = Date.now()) {
     .sort((a, b) => deadline(a, kind) - deadline(b, kind));
 }
 
+function upcoming(courses, now, limit) {
+  let exams = 0, homework = 0;
+  const entries = [];
+  for (const course of courses) {
+    for (const [kind, tasks] of [['exam', course.exams], ['homework', course.homework]]) {
+      for (const task of tasks || []) {
+        if (task.done || deadline(task, kind) < now) continue;
+        if (kind === 'exam') exams++;
+        else homework++;
+        if (limit) entries.push({course, kind, task, start: Berlin.at(task.date, task.time)});
+      }
+    }
+  }
+  const today = Date.parse(Berlin.today(now));
+  const rows = entries.sort((a, b) => a.start - b.start).slice(0, limit).map(({course, kind, task, start}) => {
+    const days = (Date.parse(task.date) - today) / 86400000;
+    const exam = kind === 'exam';
+    let status = '还有 ' + days + ' 天';
+    if (exam && start <= now && task.end) status = '考试进行中';
+    else if (days === 0) status = exam ? '今天考试' : '今天截止';
+    else if (days === 1) status = exam ? '明天考试' : '明天截止';
+    return {
+      key: JSON.stringify([course.id, kind, task.id]), courseId: course.id, taskId: task.id,
+      courseTitle: course.title, kind, title: task.title,
+      when: task.date + ' · ' + task.time + (task.end ? '–' + task.end : ''),
+      room: exam ? task.room : '', status, urgent: days <= 1
+    };
+  });
+  return {exams, homework, rows, hasMore: !!limit && exams + homework > rows.length};
+}
+
 function decorate(course, now = Date.now()) {
   const homework = active(course.homework, 'homework', now);
   const exams = active(course.exams, 'exam', now);
   const next = homework[0];
   const left = next ? deadline(next, 'homework') - now : 0;
-  return {...course, compactRoom: PDF.shortRoom(course.room), homeworkCount: homework.length, examCount: exams.length,
+  return {...course, dateLabel: M.dateLabel(course), compactRoom: PDF.shortRoom(course.room), homeworkCount: homework.length, examCount: exams.length,
     homeworkLabel: next ? (left <= 86400000 ? '即将截止 · ' : '作业 · ') + next.date.slice(5).replace('-', '/') + ' ' + next.time : '',
     homeworkDueLabel: next ? next.date.slice(5).replace('-', '/') + ' ' + next.time : '',
     homeworkUrgent: !!next && left <= 86400000,
@@ -34,7 +64,7 @@ function calendar(month, course, selected) {
   for (let i = 0; i < Math.ceil((offset + end) / 7) * 7; i++) {
     const ds = M.addDays(first, i - offset);
     const inMonth = ds.slice(0, 7) === month;
-    const available = inMonth && ds >= course.from && ds <= course.to && (M.date(ds).getDay() + 6) % 7 === course.day;
+    const available = inMonth && M.scheduledOn(course, ds);
     cells.push({date: ds, day: Number(ds.slice(8)), inMonth, available, selected: selected.includes(ds)});
   }
   return cells;
@@ -100,4 +130,4 @@ function gridLayout(items, start, end, compact, viewport, dayCount, options = {}
   return {blocks, maxColumns: lanes.length || 1, width};
 }
 
-module.exports = {deadline, active, decorate, calendar, windowWidth, layoutContext, setPrimary, gridLayout};
+module.exports = {deadline, active, upcoming, decorate, calendar, windowWidth, layoutContext, setPrimary, gridLayout};

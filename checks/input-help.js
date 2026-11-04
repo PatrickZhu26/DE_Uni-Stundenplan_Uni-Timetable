@@ -10,3 +10,17 @@ assert.equal(grades.data.groupForms[0].status,'graded');grades.groupScale({curre
 for(const page of [grades,load('index')]){const before=chosen;page.choosePDF();assert.equal(chosen,before);assert(sheet.itemList[0].includes('微信聊天'));assert(sheet.itemList[1].includes('本地 PDF'));sheet.success({tapIndex:1});assert.equal(chosen,before);assert(modal.content.includes('不能直接'));assert(modal.content.includes('文件传输助手'));modal.success({confirm:true});assert.equal(chosen,before+1);page.choosePDF();sheet.success({tapIndex:0});assert.equal(chosen,before+2);}
 const index=load('index');assert.equal(index.data.helpRead,false);index.openHelp();assert.equal(index.data.helpRead,true);assert.equal(navigated,'/pages/help/index');assert(writes.some(([k,v])=>k==='stundenplan_help_read_v1'&&v));const guide=require('../miniprogram/pages/help/guide');assert(guide.some(g=>g.items.some(t=>t.includes('长按空白时段添加其他课程或者直接点击蓝色添加按钮'))));assert(guide.every(g=>g.title&&Array.isArray(g.items)&&g.items.length));assert(guide.some(g=>g.items.some(t=>t.includes('取消日期课程'))));assert(guide.some(g=>g.items.some(t=>t.includes('Hausaufgaben'))));assert(require('../miniprogram/app.json').pages.includes('pages/help/index'));
 console.log('PASS: native array bracket paths, parent credits/grade/note input preserves row IDs and hierarchy; input does not add or navigate; both PDF source choices, local-file explanation, help read state and updated wording');
+
+// The built-in input defaults to 140 characters when maxlength is missing.
+const markup=fs.readFileSync(path.resolve(__dirname,'../miniprogram/pages/index/index.wxml'),'utf8');
+assert.match(markup,/<input\b[^>]*value="{{importUrl}}"[^>]*maxlength="4096"/);
+const fullLink='webcal://campus.example.edu/semester?user='+('a'.repeat(140))+'&hash='+('b'.repeat(40));
+let request;
+wx.cloud={callFunction:async options=>{request=options;return {result:{courses:[]}};}};
+index.data.cloudReady=true;
+index.changeImportUrl({detail:{value:fullLink}});
+index.importPDFUrl().then(()=>{
+ assert.equal(request.data.url,fullLink.replace('webcal:','https:'));
+ assert.equal(request.data.supportsWeekInterval,true);
+ console.log('PASS: full-length subscription URL reaches the cloud function');
+}).catch(error=>{console.error(error);process.exitCode=1;});

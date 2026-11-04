@@ -5,36 +5,102 @@ const PDF=require('../../utils/pdf-export');
 const CONFIG=require('../../config');
 const A=require('../../utils/semester-store');
 const Study=require('../../utils/study');
+const Berlin=require('../../utils/berlin-clock');
+const AGENDA_PAGE_SIZE=16;
 const STORAGE='stundenplan_complete_v2';
-const typeOptions=['Vorlesung','Übung','Tutorium','Seminar','Praktikum','Kolloquium','Sonstiges'];
+const typeOptions=['Vorlesung','Übung','Tutorium','Seminar','Praktikum','Kolloquium','Sonstiges','Sonstige Lehrveranstaltung'];
 const toast=title=>wx.showToast({title,icon:'none'});
 const modal=(title,content)=>wx.showModal({title,content,showCancel:false});
 function safeMeta(meta){return {school:String(meta&&meta.school||'').slice(0,200),semester:String(meta&&meta.semester||'').slice(0,100),state:H.states.some(s=>s.code===(meta&&meta.state))?meta.state:''};}
 Page({
- data:{scheduleId:'',infoMode:'full',viewportWidth:375,fitGrid:false,gridViewportWidth:0,showPrimaryOption:false,calendarOpen:false,calendarMonth:'',calendarCells:[],cancelDraft:[],studyKind:'',studyRows:[],studyEditing:false,studyForm:{},studyIndex:-1,courses:[],meta:{school:'',semester:'',state:''},baseline:null,view:M.defaultView(),viewDraft:M.defaultView(),viewDayOptions:[],settingsOpen:false,helpRead:false,holiday:H.normalize(),states:H.states,stateIndex:0,localOptions:[],holidayForm:{name:'',from:'',to:'',suspend:true},weekStart:'',weekLabel:'',selectedDay:0,dayTabs:[],gridDays:[],gridHours:[],gridHeight:1200,gridHeaderHeight:70,gridWidth:1212,gridStartMinute:480,gridEndMinute:1200,dayGroups:[],totalConflicts:0,holidayNotice:'',isEditor:false,form:M.blank(),editingId:'',formTypeIndex:0,typeOptions,dayNames:M.days,colorNames:['蓝色','紫色','橙色','青绿','粉色','深蓝','草绿'],showAll:false,gridScrollLeft:0,dragging:false,dragGhost:null,importUrl:'',importBusy:false,importPreview:[],importMeta:{school:'',semester:'',state:''},importStateIndex:0,importMode:0,importModes:['替换当前课表','追加到当前课表'],importMessage:'',importWarnings:[],extractedText:'',showExtracted:false,previewEditIndex:-1,cloudEnv:'',cloudReady:false,exportBusy:false,lastPDF:''},
+ data:{scheduleId:'',infoMode:'full',viewportWidth:375,fitGrid:false,gridViewportWidth:0,showPrimaryOption:false,calendarOpen:false,calendarMonth:'',calendarCells:[],cancelDraft:[],studyKind:'',studyRows:[],studyEditing:false,studyForm:{},studyIndex:-1,courses:[],meta:{school:'',semester:'',state:''},baseline:null,view:M.defaultView(),viewDraft:M.defaultView(),viewDayOptions:[],settingsOpen:false,helpRead:false,holiday:H.normalize(),states:H.states,stateIndex:0,localOptions:[],localSettingsOpen:false,holidayForm:{name:'',from:'',to:'',suspend:true},weekStart:'',weekLabel:'',todayDate:'',isCurrentWeek:true,selectedDay:0,schoolCancellations:[],dayTabs:[],gridDays:[],gridHours:[],gridHeight:1200,gridHeaderHeight:70,gridWidth:1212,gridStartMinute:480,gridEndMinute:1200,dayGroups:[],totalConflicts:0,holidayNotice:'',isEditor:false,form:M.blank(),editingId:'',formTypeIndex:0,typeOptions,dayNames:M.days,colorNames:['蓝色','紫色','橙色','青绿','粉色','深蓝','草绿'],showAll:false,gridScrollLeft:0,dragging:false,dragGhost:null,importUrl:'',importBusy:false,importPreview:[],importMeta:{school:'',semester:'',state:''},importStateIndex:0,importMode:0,importModes:['替换当前课表','追加到当前课表'],importMessage:'',importWarnings:[],extractedText:'',showExtracted:false,previewEditIndex:-1,cloudEnv:'',cloudReady:false,exportBusy:false,lastPDF:''},
  onLoad(){
   let state=M.emptyState();const saved=wx.getStorageSync(STORAGE);
   if(saved&&saved.version===2){try{state={...state,...saved,courses:M.normalizeAll(saved.courses),meta:safeMeta(saved.meta),holiday:H.normalize(saved.holiday),view:M.validView(saved.view)?saved.view:M.defaultView()};if(state.baseline){state.baseline={courses:M.normalizeAll(state.baseline.courses),meta:safeMeta(state.baseline.meta)};}}catch(e){modal('本地数据需要检查','未覆盖原来的数据。可以使用备份恢复。'+e.message);}}
-  const today=M.fmt(new Date());state.scheduleId=state.scheduleId||M.uid();state.infoMode=state.infoMode==='compact'?'compact':'full';this.setData({...state,...Study.layoutContext(wx),viewDraft:M.clone(state.view),weekStart:M.monday(new Date()),selectedDay:(new Date().getDay()+6)%7,holidayForm:{name:'',from:today,to:today,suspend:true},cloudEnv:CONFIG.envId||'',helpRead:!!wx.getStorageSync('stundenplan_help_read_v1')});this.syncSettings();this.initCloud(false);this.refresh();
+  const current=Berlin.week();state.scheduleId=state.scheduleId||M.uid();state.infoMode=state.infoMode==='compact'?'compact':'full';this.setData({...state,...Study.layoutContext(wx),viewDraft:M.clone(state.view),...current,holidayForm:{name:'',from:current.todayDate,to:current.todayDate,suspend:true},cloudEnv:CONFIG.envId||'',helpRead:!!wx.getStorageSync('stundenplan_help_read_v1')});this.syncSettings();this.initCloud(false);this.refresh();
  },
- onShow(){this.setData(Study.layoutContext(wx));this.refresh();this.scheduleReminderRefresh();},
- onHide(){this.dragCancel();this.stopReminderRefresh();},
- onUnload(){this.dragCancel();this.stopReminderRefresh();},
+ onShow(){
+  this._visible=true;
+  this.setData(Study.layoutContext(wx));
+  const followed=this.syncCampusDate();
+  this.refresh();
+  if(followed&&!this.data.isEditor)this.focusGridDay();
+  this.scheduleReminderRefresh();
+ },
+ onHide(){this._visible=false;this.dragCancel();this.stopReminderRefresh();},
+ onUnload(){this._visible=false;this.dragCancel();this.stopReminderRefresh();},
+ syncCampusDate(now=Date.now()){
+  const previous=this.data.todayDate;
+  const today=Berlin.today(now);
+  if(today===previous)return false;
+  const followsWeek=!previous||this.data.weekStart===Berlin.week(previous).weekStart;
+  this.setData(followsWeek?Berlin.week(today):{todayDate:today});
+  return followsWeek;
+ },
  onResize(e){this.dragCancel();const context=Study.layoutContext(wx,e&&e.size&&e.size.windowWidth);this.setData({...context,gridViewportWidth:0,...(context.fitGrid?{gridScrollLeft:0}:{})});if(context.fitGrid)this._gridScrollLeft=0;this.refresh();},
  stopReminderRefresh(){if(this._reminderTimer){clearTimeout(this._reminderTimer);this._reminderTimer=null;}},
- scheduleReminderRefresh(){this.stopReminderRefresh();const now=Date.now(),due=this.data.courses.flatMap(c=>[...(c.homework||[]).filter(t=>!t.done).map(t=>Study.deadline(t,'homework')),...(c.exams||[]).filter(t=>!t.done).map(t=>Study.deadline(t,'exam'))]).filter(t=>t>=now);if(due.length)this._reminderTimer=setTimeout(()=>{this.refresh();this.scheduleReminderRefresh();},Math.max(100,Math.min(60000,Math.min(...due)-now+50)));},
- localPDFHelp(){PDFSource.localHelp(()=>this.chooseChatPDF());},
+ scheduleReminderRefresh(){
+  this.stopReminderRefresh();
+  if(!this._visible)return;
+  const now=Date.now();
+  const due=this.data.courses.flatMap(course=>[
+   ...(course.homework||[]).filter(task=>!task.done).map(task=>Study.deadline(task,'homework')),
+   ...(course.exams||[]).filter(task=>!task.done).map(task=>Study.deadline(task,'exam'))
+  ]).filter(time=>time>=now);
+  const next=due.reduce((earliest,time)=>Math.min(earliest,time),Berlin.nextMidnight(now));
+  this._reminderTimer=setTimeout(()=>{
+   const followed=this.syncCampusDate();
+   this.refresh();
+   if(followed&&!this.data.isEditor)this.focusGridDay();
+   this.scheduleReminderRefresh();
+  },Math.max(100,Math.min(60000,next-now+50)));
+ },
  snapshot(){return {version:2,scheduleId:this.data.scheduleId,infoMode:this.data.infoMode,courses:this.data.courses,meta:this.data.meta,baseline:this.data.baseline,view:this.data.view,holiday:this.data.holiday,updatedAt:new Date().toISOString()};},
  persist(patch={},options={}){const state={...this.snapshot(),...patch};state.scheduleId=state.scheduleId||M.uid();try{A.persist(wx,state,!!options.createArchive);}catch(e){modal('保存失败',e.message||'设备存储空间不足，请先导出备份。');return false;}this.setData({...patch,scheduleId:state.scheduleId});return true;},
- syncSettings(){const h=this.data.holiday;let locals=[];if(h.state==='BY')locals=[['assumption','本市将 Mariä Himmelfahrt 列为法定假日'],['augsburg','学校位于 Augsburg（Friedensfest）']];if(['SN','TH'].includes(h.state))locals=[['corpus','本市将 Fronleichnam 列为法定假日']];this.setData({viewDayOptions:M.days.map((name,i)=>({value:String(i),label:name+' · '+M.german[i],checked:this.data.viewDraft.days.includes(i)})),stateIndex:Math.max(0,H.states.findIndex(s=>s.code===h.state)),localOptions:locals.map(([value,label])=>({value,label,checked:h.local.includes(value)}))});},
+ syncSettings(){const h=this.data.holiday;let locals=[];if(h.state==='BY')locals=[['assumption','Mariä Himmelfahrt · 部分巴伐利亚市镇'],['augsburg','Friedensfest · 仅奥格斯堡市']];if(['SN','TH'].includes(h.state))locals=[['corpus','Fronleichnam · 部分市镇']];this.setData({viewDayOptions:M.days.map((name,i)=>({value:String(i),label:name+' · '+M.german[i],checked:this.data.viewDraft.days.includes(i)})),stateIndex:Math.max(0,H.states.findIndex(s=>s.code===h.state)),localOptions:locals.map(([value,label])=>({value,label,checked:h.local.includes(value)}))});},
  refresh(){
-  const d=this.data,a=M.minute(d.view.start),b=M.minute(d.view.end),gridHeight=(b-a)*100/60;const all=[];
-  const tabs=M.days.map((name,i)=>{const ds=M.addDays(d.weekStart,i),holiday=H.info(ds,d.holiday);const items=d.courses.filter(c=>c.day===i&&(d.showAll?!(c.cancelledDates||[]).includes(ds):M.occursOn(c,ds))).map(c=>Study.decorate(c)).sort((x,y)=>x.start.localeCompare(y.start));const ids=holiday.suspended?new Set():M.conflicts(items);all.push({day:i,date:ds,name:name+' · '+ds,items:items.map(c=>({...c,conflict:ids.has(c.id),courseColor:M.colors[c.color]})),conflictCount:ids.size,sessionCount:items.length,courseCount:new Set(items.map(c=>c.title.trim())).size,holiday});return {day:i,name,dateLabel:ds.slice(5).replace('-','/'),active:i===d.selectedDay,count:items.length,...holiday};});
+  if(!this.data.isEditor)this.refreshAgenda();
+  const d=this.data,a=M.minute(d.view.start),b=M.minute(d.view.end),gridHeight=(b-a)*100/60;const all=[],schoolCancellations=[];
+  const tabs=M.days.map((name,i)=>{const ds=M.addDays(d.weekStart,i),holiday=H.info(ds,d.holiday);
+   for(const course of d.courses){
+    if(course.sourceCancelledDates?.includes(ds)&&course.cancelledDates?.includes(ds)&&M.scheduledOn(course,ds)){
+     schoolCancellations.push({id:course.id,title:course.title,date:ds,day:name,start:course.start,end:course.end});
+    }
+   }
+   const items=d.courses.filter(c=>c.day===i&&(d.showAll?!(c.cancelledDates||[]).includes(ds):M.occursOn(c,ds))).map(c=>Study.decorate(c)).sort((x,y)=>x.start.localeCompare(y.start));const ids=holiday.suspended?new Set():M.conflicts(items);all.push({day:i,date:ds,name:name+' · '+ds,items:items.map(c=>({...c,conflict:ids.has(c.id),courseColor:M.colors[c.color]})),conflictCount:ids.size,sessionCount:items.length,courseCount:new Set(items.map(c=>c.title.trim())).size,holiday});return {day:i,name,dateLabel:ds.slice(5).replace('-','/'),today:ds===d.todayDate,active:i===d.selectedDay,count:items.length,...holiday};});
   const ticks=[a];for(let n=Math.ceil((a+1)/60)*60;n<b;n+=60)ticks.push(n);ticks.push(b);
   const gridHours=ticks.map(n=>({label:M.time(n),top:(n-a)*100/60,labelTop:Math.max(8,Math.min(gridHeight-8,(n-a)*100/60))}));
   const gridDays=all.filter(g=>d.view.days.includes(g.day)).map(g=>({day:g.day,name:M.days[g.day],date:tabs[g.day].dateLabel,holiday:g.holiday,...Study.gridLayout(g.holiday.suspended?[]:g.items,d.view.start,d.view.end,d.infoMode==='compact',d.viewportWidth,d.view.days.length,{fit:d.fitGrid,contentWidth:d.gridViewportWidth})}));
   const conflictGroups=all.filter(g=>g.conflictCount>0);const dayGroups=conflictGroups.map(g=>{const items=g.items.filter(c=>c.conflict);return {...g,items,sessionCount:items.length,courseCount:new Set(items.map(c=>c.title.trim())).size};});
-  const unknown=tabs.some(t=>t.unknownCN);this.setData({dayTabs:tabs,gridDays,gridHours,gridWidth:(d.infoMode==='compact'?44:62)+gridDays.reduce((sum,g)=>sum+g.width,0),gridHeight,gridStartMinute:a,gridEndMinute:b,dayGroups,totalConflicts:conflictGroups.reduce((n,g)=>n+g.conflictCount,0),weekLabel:d.weekStart.slice(5).replace('-','/')+' — '+M.addDays(d.weekStart,6).slice(5).replace('-','/'),holidayNotice:unknown?'中国2025–2035年法定节日本日已计算；除2026年外，连休/调休安排未内置，请按官方通知自定义补充。超出2025–2035年未提供中国节日数据。':''});this.measureTimetable();
+  const unknown=tabs.some(t=>t.unknownCN);this.setData({dayTabs:tabs,schoolCancellations,isCurrentWeek:!!d.todayDate&&d.weekStart===Berlin.week(d.todayDate).weekStart,gridDays,gridHours,gridWidth:(d.infoMode==='compact'?44:62)+gridDays.reduce((sum,g)=>sum+g.width,0),gridHeight,gridStartMinute:a,gridEndMinute:b,dayGroups,totalConflicts:conflictGroups.reduce((n,g)=>n+g.conflictCount,0),weekLabel:d.weekStart.slice(5).replace('-','/')+' — '+M.addDays(d.weekStart,6).slice(5).replace('-','/'),holidayNotice:unknown?'中国2025–2035年法定节日本日已计算；除2026年外，连休/调休安排未内置，请按官方通知自定义补充。超出2025–2035年未提供中国节日数据。':''});this.measureTimetable();
+ },
+ refreshAgenda(){
+  const limit=this._agendaLimit||0;
+  const agenda=Study.upcoming(this.data.courses,Date.now(),limit);
+  this.setData({agenda,agendaOpen:limit>0});
+ },
+ toggleAgenda(){this._agendaLimit=this._agendaLimit?0:AGENDA_PAGE_SIZE;this.refreshAgenda();},
+ showMoreAgenda(){this._agendaLimit+=AGENDA_PAGE_SIZE;this.refreshAgenda();},
+ findAgendaTask(row){
+  if(!row)return {};
+  const course=this.data.courses.find(item=>item.id===row.courseId);
+  const rows=course?.[row.kind==='exam'?'exams':'homework']||[];
+  return {course,rows,task:rows.find(item=>item.id===row.taskId)};
+ },
+ openAgendaDetail(e){
+  const row=this.data.agenda.rows.find(item=>item.key===e.currentTarget.dataset.key);
+  const {task}=this.findAgendaTask(row);
+  if(task)this.setData({agendaDetail:{...row,note:task.note}});
+ },
+ closeAgendaDetail(){this.setData({agendaDetail:null});},
+ editAgendaTask(){
+  const detail=this.data.agendaDetail;
+  const {course,rows,task}=this.findAgendaTask(detail);
+  if(!task){this.closeAgendaDetail();return;}
+  this.showCourseEditor({
+   isEditor:true,editingId:course.id,form:M.clone(course),previewEditIndex:-1,
+   studyKind:detail.kind,studyRows:M.clone(rows),studyForm:M.clone(task),studyEditing:true,studyFromAgenda:true
+  });
  },
  measureTimetable(){if(this.data.isEditor||!wx.nextTick||!wx.createSelectorQuery)return;wx.nextTick(()=>{if(this.data.isEditor)return;let frame,header;const q=wx.createSelectorQuery().in(this);q.select('.timetable-scroll').boundingClientRect(r=>{frame=r;});q.select('.timetable-header').boundingClientRect(r=>{header=r;});q.exec(()=>{const patch={};const width=frame&&Math.floor(frame.width)-2;if(width>0&&Math.abs(width-this.data.gridViewportWidth)>.5)patch.gridViewportWidth=width;if(header&&header.height>0&&Math.abs(header.height-this.data.gridHeaderHeight)>1)patch.gridHeaderHeight=Math.ceil(header.height);if(!Object.keys(patch).length)return;if(this.data.fitGrid){patch.gridScrollLeft=0;this._gridScrollLeft=0;}this.setData(patch);if(patch.gridViewportWidth)this.refresh();});});},
  openHelp(){wx.setStorageSync('stundenplan_help_read_v1',true);this.setData({helpRead:true});wx.navigateTo({url:'/pages/help/index'});},
@@ -46,8 +112,9 @@ Page({
  changeViewDays(e){this.setData({'viewDraft.days':e.detail.value.map(Number)});this.syncSettings();},
  applyView(){if(!M.validView(this.data.viewDraft))return toast('结束须晚于开始，至少勾选一天');const view=M.clone(this.data.viewDraft);view.days=[...new Set(view.days)].sort((a,b)=>a-b);if(this.persist({view})){this.refresh();toast('显示设置已保存');}},
  resetView(){this.setData({viewDraft:M.defaultView()});this.syncSettings();this.applyView();},
- changeState(e){const state=H.states[Number(e.detail.value)].code;if(this.persist({holiday:{...this.data.holiday,state,local:[]}})){this.syncSettings();this.refresh();}},
- changeLocal(e){if(this.persist({holiday:{...this.data.holiday,local:e.detail.value}}))this.refresh();},
+ changeState(e){const state=H.states[Number(e.detail.value)].code;if(this.persist({holiday:{...this.data.holiday,state,local:state===this.data.holiday.state?this.data.holiday.local:[]}})){this.setData({localSettingsOpen:false});this.syncSettings();this.refresh();}},
+ toggleLocalSettings(){this.setData({localSettingsOpen:!this.data.localSettingsOpen});},
+ changeLocal(e){if(this.persist({holiday:{...this.data.holiday,local:e.detail.value}})){this.syncSettings();this.refresh();}},
  changeHolidaySwitch(e){const f=e.currentTarget.dataset.field;if(['skipDE','skipCN'].includes(f)&&this.persist({holiday:{...this.data.holiday,[f]:!!e.detail.value}}))this.refresh();},
  changeHolidayForm(e){const f=e.currentTarget.dataset.field;this.setData({['holidayForm.'+f]:e.detail.value});},
  addHoliday(){const f=this.data.holidayForm;if(!f.name.trim()||!M.validDate(f.from)||!M.validDate(f.to)||f.from>f.to)return toast('请填写假期名称和有效日期范围');if(this.data.holiday.custom.length>=100)return toast('最多保存100段自定义假期');const custom=this.data.holiday.custom.concat({...f,name:f.name.trim().slice(0,100),id:M.uid()});if(this.persist({holiday:{...this.data.holiday,custom}})){this.setData({'holidayForm.name':''});this.refresh();toast('假期已保存');}},
@@ -56,11 +123,18 @@ Page({
  saveMeta(){if(this.persist({meta:safeMeta(this.data.meta)}))toast('学校与学期已保存');},
  changeDay(e){this.setData({selectedDay:Number(e.currentTarget.dataset.day)});this.refresh();},
  changeWeek(e){this.setData({weekStart:M.addDays(this.data.weekStart,Number(e.currentTarget.dataset.delta)*7)});this.refresh();},
- returnToday(){this.setData({weekStart:M.monday(new Date()),selectedDay:(new Date().getDay()+6)%7});this.refresh();},
+ returnToday(){this.setData(Berlin.week());this.refresh();this.focusGridDay();},
+ focusGridDay(){
+  if(this.data.fitGrid)return;
+  const index=this.data.gridDays.findIndex(column=>column.day===this.data.selectedDay);
+  const left=index<0?0:this.data.gridDays.slice(0,index).reduce((sum,column)=>sum+column.width,0);
+  this._gridScrollLeft=left;
+  this.setData({gridScrollLeft:left});
+ },
  toggleAll(){this.setData({showAll:!this.data.showAll});this.refresh();},
- showCourseEditor(patch){this._returnPosition={left:this._gridScrollLeft||0,top:this._pageScrollTop||0,weekStart:this.data.weekStart,selectedDay:this.data.selectedDay};this.setData({...patch,studyKind:'',calendarOpen:false});this.updatePrimaryOption();if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:0,duration:0});},
- restorePosition(){const p=this._returnPosition;if(!p)return;this.setData({weekStart:p.weekStart,selectedDay:p.selectedDay});this.refresh();const apply=()=>{const left=this.data.fitGrid?0:p.left;this.setData({gridScrollLeft:left});this._gridScrollLeft=left;if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:p.top,duration:0});};if(wx.nextTick)wx.nextTick(apply);else apply();},
- finishEditor(){this.setData({isEditor:false,previewEditIndex:-1,studyKind:'',calendarOpen:false});this.restorePosition();},
+ showCourseEditor(patch){this._returnPosition={left:this._gridScrollLeft||0,top:this._pageScrollTop||0,weekStart:this.data.weekStart,selectedDay:this.data.selectedDay,todayDate:this.data.todayDate};this.setData({studyKind:'',studyEditing:false,studyFromAgenda:false,agendaDetail:null,calendarOpen:false,...patch});if(!this.data.studyFromAgenda)this.updatePrimaryOption();if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:0,duration:0});},
+ restorePosition(){const p=this._returnPosition;if(!p)return;const current=Berlin.week();const rolled=p.todayDate&&p.todayDate!==current.todayDate&&Berlin.week(p.todayDate).weekStart===p.weekStart;this.setData(rolled?current:{todayDate:current.todayDate,weekStart:p.weekStart,selectedDay:p.selectedDay});this.refresh();const apply=()=>{if(rolled)this.focusGridDay();else{const left=this.data.fitGrid?0:p.left;this.setData({gridScrollLeft:left});this._gridScrollLeft=left;}if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:p.top,duration:0});};if(wx.nextTick)wx.nextTick(apply);else apply();},
+ finishEditor(){this.setData({isEditor:false,previewEditIndex:-1,studyKind:'',studyEditing:false,studyFromAgenda:false,calendarOpen:false});this.restorePosition();},
  openAdd(){this.openNew(this.data.selectedDay,Math.max(0,this.data.gridStartMinute));},
  openNew(day,start){const from=M.addDays(this.data.weekStart,day),f=M.blank(day,from);f.start=M.time(Math.min(start,1425));f.end=M.time(Math.min(1439,start+90));if(this.data.courses.length){f.to=this.data.courses.reduce((end,c)=>c.to>end?c.to:end,f.to);}this.showCourseEditor({isEditor:true,editingId:'',form:f,formTypeIndex:0,previewEditIndex:-1});},
  addAtBlank(e){if(this.data.dragging)return;const day=Number(e.currentTarget.dataset.day),t=e.touches&&e.touches[0]||e.changedTouches&&e.changedTouches[0]||e.detail;if(!t)return;const y=t.clientY===undefined?t.y:t.clientY;wx.createSelectorQuery().in(this).select('#column-'+day).boundingClientRect(r=>{if(!r||!Number.isFinite(y))return;const start=Math.round((this.data.gridStartMinute+(y-r.top)*60/100)/15)*15;if(start<this.data.gridStartMinute||start>=this.data.gridEndMinute)return;this.openNew(day,start);}).exec();},
@@ -79,12 +153,12 @@ Page({
   else this.setData({'form.primary':previous});
  },
  openCourseHomework(e){this.openEdit(e);if(this.data.isEditor&&this.data.editingId===e.currentTarget.dataset.id)this.openStudy({currentTarget:{dataset:{kind:'homework'}}});},
- changePicker(e){const f=e.currentTarget.dataset.field,v=e.detail.value;if(f==='type')this.setData({'form.type':typeOptions[Number(v)],formTypeIndex:Number(v)});else this.setData({['form.'+f]:['day','color'].includes(f)?Number(v):v});this.updatePrimaryOption();},
- saveCourse(){let f;try{f=M.normalize(this.data.form);}catch(e){return toast(e.message);}if(this.data.previewEditIndex>=0){let items=this.data.importPreview.slice();items[this.data.previewEditIndex]=f;if(f.primary)items=Study.setPrimary(items,f.id,true);this.setData({importPreview:items});this.finishEditor();return;}let courses=this.data.editingId?this.data.courses.map(c=>c.id===this.data.editingId?f:c):this.data.courses.concat(f);if(courses.length>500)return toast('最多支持500个课时');if(f.primary)courses=Study.setPrimary(courses,f.id,true);const collisions=courses.filter(c=>M.overlap(c,f));const commit=()=>{if(this.persist({courses})){this.finishEditor();this.scheduleReminderRefresh();toast('已保存');}};if(collisions.length)wx.showModal({title:'检测到课程冲突',content:'与 '+collisions.map(c=>c.title).join('、').slice(0,180)+' 时间重叠，仍然保存并排显示？',success:r=>{if(r.confirm)commit();}});else commit();},
+ changePicker(e){const f=e.currentTarget.dataset.field,v=e.detail.value;if(f==='type')this.setData({'form.type':typeOptions[Number(v)],formTypeIndex:Number(v)});else if(f==='day'&&this.data.form.from===this.data.form.to){const day=Number(v),ds=M.addDays(this.data.form.from,day-this.data.form.day);this.setData({'form.day':day,'form.from':ds,'form.to':ds});}else this.setData({['form.'+f]:['day','color'].includes(f)?Number(v):v});this.updatePrimaryOption();},
+ saveCourse(){let f;try{f=M.normalize(this.data.form);}catch(e){return toast(e.message);}if(f.from===f.to)f.day=(M.date(f.from).getDay()+6)%7;if(this.data.previewEditIndex>=0){let items=this.data.importPreview.slice();items[this.data.previewEditIndex]={...f,dateLabel:M.dateLabel(f)};if(f.primary)items=Study.setPrimary(items,f.id,true);this.setData({importPreview:items});this.finishEditor();return;}let courses=this.data.editingId?this.data.courses.map(c=>c.id===this.data.editingId?f:c):this.data.courses.concat(f);if(courses.length>500)return toast('最多支持500个课时');if(f.primary)courses=Study.setPrimary(courses,f.id,true);const collisions=courses.filter(c=>M.overlap(c,f));const commit=()=>{if(this.persist({courses})){this.finishEditor();this.scheduleReminderRefresh();toast('已保存');}};if(collisions.length)wx.showModal({title:'检测到课程冲突',content:'与 '+collisions.map(c=>c.title).join('、').slice(0,180)+' 时间重叠，仍然保存并排显示？',success:r=>{if(r.confirm)commit();}});else commit();},
  deleteCourse(){const id=this.data.editingId;wx.showModal({title:'删除课程',content:'删除此条重复课程及批注？',success:r=>{if(r.confirm&&this.persist({courses:this.data.courses.filter(c=>c.id!==id)})){this.finishEditor();}}});},
 
- clearSchedule(){if(this.data.importBusy)return;wx.showModal({title:'清空当前课表及课程信息？',content:'将清除所有课程、批注、取消日期、考试、作业和课表学校学期信息，同时把关联的已保存学期档案同步为空白。成绩与学分不会改变。可先导出备份。',confirmText:'清空课表',confirmColor:'#c94b3d',success:r=>{if(!r.confirm)return;const patch={courses:[],meta:{school:'',semester:'',state:''},baseline:null,holiday:H.normalize()};if(this.persist(patch)){this._importExtra=null;this.setData({importPreview:[],importUrl:'',importMeta:{school:'',semester:'',state:''},importMessage:'当前课表已清空，关联学期档案已同步。',importWarnings:[],extractedText:'',lastPDF:'',gridScrollLeft:0});this._gridScrollLeft=0;this.stopReminderRefresh();this.syncSettings();this.refresh();toast('课表及课程信息已清空');}}});},
- openCancelCalendar(){const f=this.data.form;if(!M.validDate(f.from)||!M.validDate(f.to)||f.from>f.to)return toast('请先选择有效的课程起止日期');const current=M.fmt(new Date()),anchor=current>=f.from&&current<=f.to?current:f.from;this.setData({calendarOpen:true,calendarMonth:anchor.slice(0,7),cancelDraft:(f.cancelledDates||[]).slice()});this.renderCancelCalendar();},
+ clearSchedule(){if(this.data.importBusy)return;wx.showModal({title:'清空当前课表及课程信息？',content:'将清除所有课程、批注、取消日期、考试、作业和课表学校学期信息，同时把关联的已保存学期档案同步为空白。成绩与学分不会改变。可先导出备份。',confirmText:'清空课表',confirmColor:'#c94b3d',success:r=>{if(!r.confirm)return;const patch={courses:[],meta:{school:'',semester:'',state:''},baseline:null,holiday:H.normalize()};if(this.persist(patch)){this._importExtra=null;this.setData({importPreview:[],importUrl:'',importMeta:{school:'',semester:'',state:''},importMessage:'当前课表已清空，关联学期档案已同步。',importWarnings:[],extractedText:'',lastPDF:'',gridScrollLeft:0});this._gridScrollLeft=0;this.syncSettings();this.refresh();this.scheduleReminderRefresh();toast('课表及课程信息已清空');}}});},
+ openCancelCalendar(){const f=this.data.form;if(!M.validDate(f.from)||!M.validDate(f.to)||f.from>f.to)return toast('请先选择有效的课程起止日期');const current=Berlin.today(),anchor=current>=f.from&&current<=f.to?current:f.from;this.setData({calendarOpen:true,calendarMonth:anchor.slice(0,7),cancelDraft:(f.cancelledDates||[]).slice()});this.renderCancelCalendar();},
  renderCancelCalendar(){this.setData({calendarCells:Study.calendar(this.data.calendarMonth,this.data.form,this.data.cancelDraft)});},
  changeCalendarMonth(e){const d=M.date(this.data.calendarMonth+'-01');d.setMonth(d.getMonth()+Number(e.currentTarget.dataset.delta));const month=M.fmt(d).slice(0,7);if(month<this.data.form.from.slice(0,7)||month>this.data.form.to.slice(0,7))return;this.setData({calendarMonth:month});this.renderCancelCalendar();},
  toggleCancelDate(e){const ds=e.currentTarget.dataset.date,cell=this.data.calendarCells.find(c=>c.date===ds);if(!cell||!cell.available)return;const dates=new Set(this.data.cancelDraft);if(dates.has(ds))dates.delete(ds);else dates.add(ds);this.setData({cancelDraft:[...dates].sort()});this.renderCancelCalendar();},
@@ -94,12 +168,11 @@ Page({
  noop(){},
  openStudy(e){const kind=e.currentTarget.dataset.kind;if(!['exam','homework'].includes(kind))return;this._editorReturnTop=this._pageScrollTop||0;this.setData({studyKind:kind,studyEditing:false,studyRows:M.clone(this.data.form[kind==='exam'?'exams':'homework']||[])});this.renderStudyRows();if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:0,duration:0});},
  renderStudyRows(){const kind=this.data.studyKind,now=Date.now();this.setData({studyRows:this.data.studyRows.map(t=>{const remaining=Study.deadline(t,kind)-now,days=Math.ceil(remaining/86400000);return {...t,month:t.date.slice(5,7),day:t.date.slice(8),statusLabel:t.done?(kind==='exam'?'已结束':'已完成'):remaining<0?'已过期':days<=1?'即将到期':'还有 '+days+' 天',expired:remaining<0,urgent:!t.done&&remaining>=0&&days<=1};}).sort((a,b)=>Study.deadline(a,kind)-Study.deadline(b,kind))});},
- closeStudy(){this.setData({studyKind:'',studyEditing:false});const restore=()=>{if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:this._editorReturnTop||0,duration:0});};if(wx.nextTick)wx.nextTick(restore);else restore();},
- editStudy(e){const id=e.currentTarget&&e.currentTarget.dataset&&e.currentTarget.dataset.id,index=id?this.data.studyRows.findIndex(t=>t.id===id):-1,old=this.data.studyRows[index],today=M.fmt(new Date());this.setData({studyEditing:true,studyIndex:index,studyForm:old?M.clone(old):{id:M.uid(),title:this.data.studyKind==='exam'?(this.data.form.shortTitle||this.data.form.title||'课程')+'考试':'',date:today,time:this.data.studyKind==='exam'?this.data.form.start:'23:59',end:this.data.studyKind==='exam'?this.data.form.end:'',room:this.data.studyKind==='exam'?this.data.form.room:'',note:'',done:false}});},
+ closeStudy(){if(this.data.studyFromAgenda){this.finishEditor();return;}this.setData({studyKind:'',studyEditing:false});const restore=()=>{if(wx.pageScrollTo)wx.pageScrollTo({scrollTop:this._editorReturnTop||0,duration:0});};if(wx.nextTick)wx.nextTick(restore);else restore();},
+ editStudy(e){const id=e.currentTarget&&e.currentTarget.dataset&&e.currentTarget.dataset.id,index=id?this.data.studyRows.findIndex(t=>t.id===id):-1,old=this.data.studyRows[index],today=Berlin.today();this.setData({studyEditing:true,studyIndex:index,studyForm:old?M.clone(old):{id:M.uid(),title:this.data.studyKind==='exam'?(this.data.form.shortTitle||this.data.form.title||'课程')+'考试':'',date:today,time:this.data.studyKind==='exam'?this.data.form.start:'23:59',end:this.data.studyKind==='exam'?this.data.form.end:'',room:this.data.studyKind==='exam'?this.data.form.room:'',note:'',done:false}});},
  changeStudy(e){const field=e.currentTarget.dataset.field;if(['title','date','time','end','room','note','done'].includes(field))this.setData({['studyForm.'+field]:e.detail.value});},
- cancelStudyEdit(){this.setData({studyEditing:false});},
  commitStudyRows(rows){try{rows=M.normalizeTasks(rows,this.data.studyKind);}catch(e){toast(e.message);return false;}const key=this.data.studyKind==='exam'?'exams':'homework';if(this.data.editingId){const courses=this.data.courses.map(c=>c.id===this.data.editingId?{...c,[key]:rows}:c);if(!this.persist({courses}))return false;}this.setData({['form.'+key]:rows,studyRows:rows});this.renderStudyRows();this.scheduleReminderRefresh();return true;},
- saveStudy(){try{const task=M.normalizeTasks([this.data.studyForm],this.data.studyKind)[0];if(this.data.studyKind==='exam'&&task.end&&task.end<=task.time)throw Error('考试结束时间须晚于开始时间');const rows=this.data.studyRows.filter(t=>t.id!==task.id).concat(task);if(rows.length>100)throw Error('每门课程最多保存100条');if(this.commitStudyRows(rows)){this.setData({studyEditing:false});toast(this.data.editingId?'已保存，并同步学期档案':'已加入课程，保存课程后生效');}}catch(e){toast(e.message);}},
+ saveStudy(){try{const task=M.normalizeTasks([this.data.studyForm],this.data.studyKind)[0];if(this.data.studyKind==='exam'&&task.end&&task.end<=task.time)throw Error('考试结束时间须晚于开始时间');const rows=this.data.studyRows.filter(t=>t.id!==task.id).concat(task);if(rows.length>100)throw Error('每门课程最多保存100条');if(this.commitStudyRows(rows)){if(this.data.studyFromAgenda)this.finishEditor();else this.setData({studyEditing:false});toast(this.data.editingId?'已保存，并同步学期档案':'已加入课程，保存课程后生效');}}catch(e){toast(e.message);}},
  toggleStudyDone(e){const id=e.currentTarget.dataset.id;this.commitStudyRows(this.data.studyRows.map(t=>t.id===id?{...t,done:!t.done}:t));},
  deleteStudy(e){const id=e.currentTarget.dataset.id;wx.showModal({title:'删除这条'+(this.data.studyKind==='exam'?'考试':'作业')+'记录？',content:'只删除当前记录，其他课程信息保留。',confirmText:'删除',confirmColor:'#c94b3d',success:r=>{if(r.confirm)this.commitStudyRows(this.data.studyRows.filter(t=>t.id!==id));}});},
  copyLocation(e){const c=this.data.courses.find(c=>c.id===e.currentTarget.dataset.id);if(c)wx.setClipboardData({data:[c.building,c.room].filter(Boolean).join(' · ')});},
@@ -108,19 +181,47 @@ Page({
  initCloud(notify){const env=this.data.cloudEnv.trim();if(!env||!wx.cloud){this.setData({cloudReady:false});return false;}try{wx.cloud.init({env,traceUser:false});this.setData({cloudReady:true});if(notify){wx.setStorageSync('stundenplan_cloud_env',env);toast('环境已保存，请确认已部署云函数');}return true;}catch(e){this.setData({cloudReady:false});if(notify)modal('云环境配置失败',e.message||e.errMsg);return false;}},
  ensureCloud(){if(this.data.cloudReady)return true;modal('请配置云开发','请检查项目 config.js 中的云环境及 parseSchedule 部署。');return false;},
  changeImportUrl(e){this.setData({importUrl:e.detail.value});},
- choosePDF(){if(!this.data.importBusy)PDFSource.choose(()=>this.chooseChatPDF());},
- async chooseChatPDF(){if(this.data.importBusy)return;wx.chooseMessageFile({count:1,type:'file',extension:['pdf'],success:async r=>{const file=r.tempFiles[0];if(file.size>16*1024*1024)return toast('PDF不能超过16MB');this.startImport('正在读取PDF……');try{this._importStage='读取本地PDF';const buffer=wx.getFileSystemManager().readFileSync(file.path);const embedded=PDF.readEmbedded(buffer);if(embedded){this.acceptResult({courses:embedded.courses,meta:embedded.meta,holiday:embedded.holiday,view:embedded.view,infoMode:embedded.infoMode,warnings:[],adapter:'own-pdf-backup'});return;}if(!this.ensureCloud()){this.setData({importBusy:false});return;}this._importStage='获取云上传路径';const ticket=await wx.cloud.callFunction({name:'parseSchedule',data:{action:'uploadTicket'},config:{env:this.data.cloudEnv}});if(!ticket.result||!ticket.result.cloudPath)throw Error(ticket.result&&ticket.result.error||'获取上传路径失败，请更新云函数');this._importStage='上传PDF';const upload=await wx.cloud.uploadFile({cloudPath:ticket.result.cloudPath,filePath:file.path,config:{env:this.data.cloudEnv}});try{await this.parseImported({fileID:upload.fileID});}finally{await wx.cloud.deleteFile({fileList:[upload.fileID],config:{env:this.data.cloudEnv}}).catch(()=>{});}}catch(e){this.importError(e);}}});},
+ choosePDF(){if(!this.data.importBusy)PDFSource.choose(()=>this.chooseChatSchedule(),true);},
+ localPDFHelp(){PDFSource.localHelp(()=>this.chooseChatSchedule(),true);},
+ chooseChatSchedule(){
+  if(this.data.importBusy)return;
+  wx.chooseMessageFile({count:1,type:'file',extension:['pdf','ics'],success:async r=>{
+   const file=r.tempFiles[0];
+   if(file.size>16*1024*1024)return toast('课表文件不能超过16MB');
+   const kind=/\.ics$/i.test(file.name||file.path)?'ics':'pdf';
+   this.startImport('正在读取课表……');
+   try{
+    if(kind==='pdf'){
+     this._importStage='读取本地PDF';
+     const buffer=wx.getFileSystemManager().readFileSync(file.path);
+     const embedded=PDF.readEmbedded(buffer);
+     if(embedded){
+      this.acceptResult({courses:embedded.courses,meta:embedded.meta,holiday:embedded.holiday,view:embedded.view,infoMode:embedded.infoMode,warnings:[],adapter:'own-pdf-backup'});
+      return;
+     }
+    }
+    if(!this.ensureCloud()){this.setData({importBusy:false});return;}
+    this._importStage='获取云上传路径';
+    const ticket=await wx.cloud.callFunction({name:'parseSchedule',data:{action:'uploadTicket',kind},config:{env:this.data.cloudEnv}});
+    if(!ticket.result||!ticket.result.cloudPath)throw Error(ticket.result&&ticket.result.error||'获取上传路径失败，请更新云函数');
+    this._importStage='上传课表文件';
+    const upload=await wx.cloud.uploadFile({cloudPath:ticket.result.cloudPath,filePath:file.path,config:{env:this.data.cloudEnv}});
+    try{await this.parseImported({fileID:upload.fileID});}
+    finally{await wx.cloud.deleteFile({fileList:[upload.fileID],config:{env:this.data.cloudEnv}}).catch(()=>{});}
+   }catch(e){this.importError(e);}
+  }});
+ },
  startImport(message){this._importExtra=null;this.setData({importBusy:true,importPreview:[],importMeta:{school:'',semester:'',state:''},importMessage:message,importWarnings:[],extractedText:'',showExtracted:false});},
- async importPDFUrl(){if(this.data.importBusy||!this.ensureCloud())return;const url=this.data.importUrl.trim();if(!/^https:\/\//i.test(url))return toast('请输入公开HTTPS PDF链接');this.startImport('正在下载并识别……');await this.parseImported({url});},
- importError(e){const detail=e.message||e.errMsg||'请检查网络与云函数部署';let message=detail;if(/Env Not Exists|INVALID_ENV|100003/.test(detail))message='暂时无法访问已配置的云环境。请确认当前AppID与该环境属于同一小程序，并重新编译后重试。';else if(/unable to get local issuer certificate|CERT_|certificate/i.test(detail))message='链接服务器的HTTPS证书无法验证，请先下载PDF，再使用“选择 PDF 文件”上传。';else if(/FUNCTION_NOT_FOUND|FUNCTION_NOT_EXIST|FunctionName.*not.*found|函数不存在/i.test(detail))message='识别云函数尚未部署，请在开发者工具部署 parseSchedule 后重试。';this.setData({importBusy:false,importPreview:[],importMessage:'识别失败：'+message});console.error('课表导入失败',this._importStage||'',detail,e.stack||'');},
- async parseImported(params){this._importStage='云端解析PDF';try{const response=await wx.cloud.callFunction({name:'parseSchedule',data:params,config:{env:this.data.cloudEnv,timeout:60000}});if(response.result&&response.result.diagnostic)console.error('识别服务诊断',JSON.stringify(response.result.diagnostic));this.acceptResult(response.result||{});}catch(e){this.importError(e);}},
- acceptResult(result){if(result.error)throw Error(result.error);let rejected=0;const incoming=(Array.isArray(result.courses)?result.courses:[]).map(c=>{try{return M.normalize(c);}catch(e){rejected++;return null;}}).filter(Boolean);const meta=safeMeta(result.meta);this._importExtra=result.adapter==='own-pdf-backup'?{holiday:H.normalize(result.holiday),view:M.validView(result.view)?result.view:null,infoMode:result.infoMode==='compact'?'compact':'full'}:null;this.setData({importBusy:false,importPreview:incoming,importMeta:meta,importStateIndex:Math.max(0,H.states.findIndex(s=>s.code===meta.state)),importWarnings:(result.warnings||[]).concat(rejected?['有 '+rejected+' 条日期/时间无效，未加入预览']:[]),extractedText:result.textPreview||'',importMessage:incoming.length?'识别到 '+incoming.length+' 个课时。可逐项编辑，并核对学校、学期和所在州。':'未识别到有效课程。请查看提取文字，或上传文本型课表PDF。'});},
+ async importPDFUrl(){if(this.data.importBusy||!this.ensureCloud())return;const url=this.data.importUrl.trim().replace(/^webcals?:\/\//i,'https://');if(!/^https:\/\//i.test(url))return toast('请输入学校导出的 HTTPS PDF 或 iCalendar 链接');this.startImport('正在下载并识别……');await this.parseImported({url});},
+ importError(e){const detail=e.message||e.errMsg||'请检查网络与云函数部署';let message=detail;if(/Env Not Exists|INVALID_ENV|100003/.test(detail))message='暂时无法访问已配置的云环境。请确认当前AppID与该环境属于同一小程序，并重新编译后重试。';else if(/unable to get local issuer certificate|CERT_|certificate/i.test(detail))message='链接服务器的 HTTPS 证书无法验证，可从学校系统另行导出 PDF。';else if(/FUNCTION_NOT_FOUND|FUNCTION_NOT_EXIST|FunctionName.*not.*found|函数不存在/i.test(detail))message='识别云函数尚未部署，请在开发者工具部署 parseSchedule 后重试。';this.setData({importBusy:false,importPreview:[],importMessage:'识别失败：'+message});console.error('课表导入失败',this._importStage||'',detail,e.stack||'');},
+ async parseImported(params){this._importStage='云端解析课表';try{const response=await wx.cloud.callFunction({name:'parseSchedule',data:{...params,supportsWeekInterval:true},config:{env:this.data.cloudEnv,timeout:60000}});if(response.result&&response.result.diagnostic)console.error('识别服务诊断',JSON.stringify(response.result.diagnostic));this.acceptResult(response.result||{});}catch(e){this.importError(e);}},
+ acceptResult(result){if(result.error)throw Error(result.error);let rejected=0;const incoming=(Array.isArray(result.courses)?result.courses:[]).map(c=>{try{const course=M.normalize(c);return {...course,dateLabel:M.dateLabel(course)};}catch(e){rejected++;return null;}}).filter(Boolean);const meta=safeMeta(result.meta);this._importExtra=result.adapter==='own-pdf-backup'?{holiday:H.normalize(result.holiday),view:M.validView(result.view)?result.view:null,infoMode:result.infoMode==='compact'?'compact':'full'}:null;this.setData({importBusy:false,importPreview:incoming,importMeta:meta,importStateIndex:Math.max(0,H.states.findIndex(s=>s.code===meta.state)),importWarnings:(result.warnings||[]).concat(rejected?['有 '+rejected+' 条日期/时间无效，未加入预览']:[]),extractedText:result.textPreview||'',importMessage:incoming.length?'识别到 '+incoming.length+' 个课时。可逐项编辑，并核对学校、学期和所在州。':'未识别到有效课程。请查看提取文字，或换用学校导出的 PDF / iCalendar 链接。'});},
  changeImportMeta(e){this.setData({['importMeta.'+e.currentTarget.dataset.field]:e.detail.value});},
  changeImportState(e){this.setData({importStateIndex:Number(e.detail.value),'importMeta.state':H.states[Number(e.detail.value)].code});},
  changeImportMode(e){this.setData({importMode:Number(e.detail.value)});},
  removePreview(e){this.setData({importPreview:this.data.importPreview.filter((c,i)=>i!==Number(e.currentTarget.dataset.index))});},
  toggleExtracted(){this.setData({showExtracted:!this.data.showExtracted});},
- confirmPDFImport(){if(!this.data.importPreview.length)return;const incoming=this.data.importPreview.map(c=>({...c,id:M.uid()}));let courses=this.data.importMode?this.data.courses.concat(incoming):incoming;for(const c of incoming)if(c.primary)courses=Study.setPrimary(courses,c.id,true);if(courses.length>500)return toast('导入后不能超过500个课时');const count=M.conflicts(courses).size;wx.showModal({title:'确认导入课表',content:(this.data.importMode?'追加':'替换为')+' '+incoming.length+' 个课时，'+count+' 个课时存在时间冲突。确认后保存为可恢复的导入原版。',success:r=>{if(!r.confirm)return;const meta=safeMeta(this.data.importMeta);const holiday=this._importExtra?this._importExtra.holiday:{...this.data.holiday,state:meta.state||this.data.holiday.state,local:meta.state&&meta.state!==this.data.holiday.state?[]:this.data.holiday.local};const changedSemester=A.identity({meta})!==A.identity(this.snapshot());const patch={courses,meta,holiday,baseline:M.clone({courses,meta}),scheduleId:changedSemester?M.uid():this.data.scheduleId};if(this._importExtra){if(this._importExtra.view)patch.view=this._importExtra.view;patch.infoMode=this._importExtra.infoMode;}if(this.persist(patch,{createArchive:true})){const from=incoming.reduce((a,c)=>c.from<a?c.from:a,incoming[0].from);this.setData({importPreview:[],importMessage:'导入成功，原版和学期档案已保存；后续修改自动同步。',weekStart:M.monday(M.date(from)),selectedDay:incoming[0].day,viewDraft:M.clone(this.data.view)});this.syncSettings();this.refresh();}}});},
+ confirmPDFImport(){if(!this.data.importPreview.length)return;const incoming=this.data.importPreview.map(({dateLabel,...course})=>({...course,id:M.uid()}));let courses=this.data.importMode?this.data.courses.concat(incoming):incoming;for(const c of incoming)if(c.primary)courses=Study.setPrimary(courses,c.id,true);if(courses.length>500)return toast('导入后不能超过500个课时');const count=M.conflicts(courses).size;wx.showModal({title:'确认导入课表',content:(this.data.importMode?'追加':'替换为')+' '+incoming.length+' 个课时，'+count+' 个课时存在时间冲突。确认后保存为可恢复的导入原版。',success:r=>{if(!r.confirm)return;const meta=safeMeta(this.data.importMeta);const holiday=this._importExtra?this._importExtra.holiday:{...this.data.holiday,state:meta.state||this.data.holiday.state,local:meta.state&&meta.state!==this.data.holiday.state?[]:this.data.holiday.local};const changedSemester=A.identity({meta})!==A.identity(this.snapshot());const patch={courses,meta,holiday,baseline:M.clone({courses,meta}),scheduleId:changedSemester?M.uid():this.data.scheduleId};if(this._importExtra){if(this._importExtra.view)patch.view=this._importExtra.view;patch.infoMode=this._importExtra.infoMode;}if(this.persist(patch,{createArchive:true})){this.setData({importPreview:[],importMessage:'导入成功，原版和学期档案已保存。',showAll:false,...Berlin.week(),viewDraft:M.clone(this.data.view)});this.syncSettings();this.refresh();this.focusGridDay();this.scheduleReminderRefresh();}}});},
  onGridScroll(e){const left=Number(e.detail.scrollLeft)||0;this._gridScrollLeft=left;if(this._drag)this._drag.scrollLeft=left;},
  onPageScroll(e){this._pageScrollTop=Math.max(0,Number(e.scrollTop)||0);},
  onCardScroll(e){const id=e.currentTarget.dataset.id;if(!id)return;this._cardOffsets=this._cardOffsets||{};this._cardOffsets[id]=Math.max(0,Number(e.detail.scrollTop)||0);},
@@ -130,8 +231,8 @@ Page({
  dragMove(e){const t=e.touches&&e.touches[0];if(!t)return;const d=this._drag;if(d){d.x=t.clientX;d.y=t.clientY;if(Math.hypot(d.x-d.originX,d.y-d.originY)>8)d.moved=true;this.setData({'dragGhost.x':t.clientX+10,'dragGhost.y':t.clientY+10});return;}const s=this._cardTouch;if(!s)return;s.currentY=t.clientY;const dx=t.clientX-s.x,dy=t.clientY-s.y;if(!s.axis&&Math.max(Math.abs(dx),Math.abs(dy))>8)s.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';if(s.axis)this._suppressTap=Date.now()+500;if(s.axis==='y')this.chainCardScroll(s,t.clientY);},
  dragEdgeStep(){const d=this._drag,v=d&&d.viewport;if(!v||!d.ready||!d.moved||d.y<v.top||d.y>v.bottom)return;const zone=40,left=d.x-v.left,right=v.right-d.x;let speed=left<zone?-Math.ceil((zone-Math.max(0,left))/zone*18):right<zone?Math.ceil((zone-Math.max(0,right))/zone*18):0;if(!speed)return;const width=v.width||v.right-v.left,next=Math.max(0,Math.min(this.data.gridWidth-width,d.scrollLeft+speed));if(next!==d.scrollLeft){this.setData({gridScrollLeft:next});}},
  dragCancel(){if(this._edgeTimer){clearInterval(this._edgeTimer);this._edgeTimer=null;}const wasDragging=!!this._drag;this._drag=null;this._cardTouch=null;if(wasDragging)this._suppressTap=Date.now()+500;this.setData({dragging:false,dragGhost:null});},
- dragEnd(e){const d=this._drag;if(!d){this._cardTouch=null;return;}const released=e&&e.changedTouches&&e.changedTouches[0];if(released){d.x=released.clientX;d.y=released.clientY;if(Math.hypot(d.x-d.originX,d.y-d.originY)>8)d.moved=true;}this.dragCancel();if(!d.moved)return this.confirmHeldDelete(d.course);if(!d.ready)return;const shift=d.scrollLeft-d.originScroll,rects=d.rects.map(r=>r&&({...r,left:r.left-shift,right:r.right-shift}));const i=rects.findIndex(r=>r&&d.x>=r.left&&d.x<r.right&&d.y>=r.top&&d.y<r.bottom);if(i<0)return;const start=Math.round((d.start+(d.y-rects[i].top)*60/100)/15)*15,end=start+M.minute(d.course.end)-M.minute(d.course.start);if(start<d.start||start>=this.data.gridEndMinute||end>1439)return toast('请放到有效时间范围内');const f={...d.course,day:d.days[i],start:M.time(start),end:M.time(end)};const conflicts=this.data.courses.filter(c=>M.overlap(c,f));wx.showModal({title:conflicts.length?'移动后存在课程冲突':'确认移动课程',content:M.days[f.day]+' '+f.start+'–'+f.end+'，将修改整个每周重复课程，保留批注和日期范围。',success:r=>{if(r.confirm&&this.persist({courses:this.data.courses.map(c=>c.id===f.id?f:c)}))this.refresh();}});},
- confirmHeldDelete(course){wx.showModal({title:'是否删除这个课程？',content:'删除“'+course.title+'”这条每周重复课程及其批注？\n'+M.days[course.day]+' '+course.start+'–'+course.end+'\n'+course.from+' 至 '+course.to,confirmText:'删除',cancelText:'取消',confirmColor:'#c94b3d',success:r=>{if(r.confirm&&this.persist({courses:this.data.courses.filter(c=>c.id!==course.id)}))this.refresh();}});},
+ dragEnd(e){const d=this._drag;if(!d){this._cardTouch=null;return;}const released=e&&e.changedTouches&&e.changedTouches[0];if(released){d.x=released.clientX;d.y=released.clientY;if(Math.hypot(d.x-d.originX,d.y-d.originY)>8)d.moved=true;}this.dragCancel();if(!d.moved)return this.confirmHeldDelete(d.course);if(!d.ready)return;const shift=d.scrollLeft-d.originScroll,rects=d.rects.map(r=>r&&({...r,left:r.left-shift,right:r.right-shift}));const i=rects.findIndex(r=>r&&d.x>=r.left&&d.x<r.right&&d.y>=r.top&&d.y<r.bottom);if(i<0)return;const start=Math.round((d.start+(d.y-rects[i].top)*60/100)/15)*15,end=start+M.minute(d.course.end)-M.minute(d.course.start);if(start<d.start||start>=this.data.gridEndMinute||end>1439)return toast('请放到有效时间范围内');const f={...d.course,day:d.days[i],start:M.time(start),end:M.time(end)};if(f.from===f.to)f.from=f.to=M.addDays(f.from,f.day-d.course.day);const conflicts=this.data.courses.filter(c=>M.overlap(c,f));wx.showModal({title:conflicts.length?'移动后存在课程冲突':'确认移动课程',content:M.days[f.day]+' '+f.start+'–'+f.end+'，将修改这条课程的时间安排，保留批注和日期范围。',success:r=>{if(r.confirm&&this.persist({courses:this.data.courses.map(c=>c.id===f.id?f:c)}))this.refresh();}});},
+ confirmHeldDelete(course){wx.showModal({title:'是否删除这个课程？',content:'删除“'+course.title+'”这条课程及其批注？\n'+M.days[course.day]+' '+course.start+'–'+course.end+'\n'+course.from+' 至 '+course.to,confirmText:'删除',cancelText:'取消',confirmColor:'#c94b3d',success:r=>{if(r.confirm&&this.persist({courses:this.data.courses.filter(c=>c.id!==course.id)}))this.refresh();}});},
  navigateCourse(e){const c=this.data.courses.find(c=>c.id===e.currentTarget.dataset.id);if(!c)return;const address=[c.building,c.room].filter(Boolean).join(' · ');if(!address)return toast('请先填写地点');wx.showActionSheet({itemList:['复制地点','复制 Apple Maps 链接','复制 Google Maps 链接'],success:r=>{const q=encodeURIComponent(address);wx.setClipboardData({data:r.tapIndex===1?'https://maps.apple.com/?q='+q:r.tapIndex===2?'https://www.google.com/maps/search/?api=1&query='+q:address,success:()=>{if(r.tapIndex)modal('地图链接已复制','粘贴到系统浏览器打开，再由系统选择地图App。小程序不能检测已安装地图或保证直接启动导航。');}});}});},
  backup(){return {format:'STUNDENPLAN-v2',...this.snapshot()};},
  exportData(){wx.setClipboardData({data:JSON.stringify(this.backup())});},

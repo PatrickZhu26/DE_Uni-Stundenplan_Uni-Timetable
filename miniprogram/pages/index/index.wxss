@@ -39,7 +39,7 @@
 .display-actions button+button{background:#edf3fb;color:#38639b}
 .grid-body{overflow:hidden}
 /* 最终版布局：独立添加按钮、可折叠设置和法定/自定义假期。 */
-.week-center{min-width:0}.week-heading{white-space:nowrap;font-size:26rpx}.week-year{white-space:nowrap}.navbtn{flex-shrink:0}.today{flex-shrink:0}.day{flex-shrink:0;box-sizing:border-box}.days{width:auto;min-width:max-content}.day.vacation{background:#216cbd;color:#fff}.day.vacation-selected{box-shadow:inset 0 0 0 2px #b8c5d4,0 2px 6px #183b641a}.holiday-dots{display:flex;justify-content:center;gap:5px;height:10px;margin-top:5px}.holiday-dot{width:6px;height:6px;border-radius:50%}.cn-dot{background:#ed4848}.de-dot{background:#fa982e}.holiday-legend{display:flex;gap:14rpx;flex-wrap:wrap;color:#64748b;font-size:21rpx}.legend-cn{color:#cf3333}.legend-de{color:#c97816}.notice{padding:16rpx;background:#fff4dd;color:#8d601d;border-radius:10rpx;line-height:1.6;font-size:23rpx;margin:14rpx 0}.settings-toggle{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:27rpx;min-height:48rpx}.settings-content{margin-top:18rpx}.school-settings,.holiday-settings{border-top:1px solid #e2e8f0;margin-top:26rpx;padding-top:24rpx}.school-settings input,.holiday-form input,.cloud-config input{background:#f2f5fa;padding:20rpx;border-radius:10rpx;margin:14rpx 0;font-size:25rpx}.setting-label{margin-top:20rpx}.small-secondary{font-size:24rpx;color:#216cbd;background:#edf3fb;margin:14rpx 0}.local-option{display:flex;align-items:center;gap:8px;margin:16rpx 0;font-size:24rpx}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:24rpx;margin:20rpx 0}.custom-holiday{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #eee;padding:16rpx 0;font-size:25rpx}.custom-holiday button{flex-shrink:0;margin:0}.timetable-header{height:auto;min-height:70px;align-items:stretch}.grid-day-header{font-size:17px;white-space:normal;overflow-wrap:anywhere}.header-cn{color:#be3030;font-size:12px;font-weight:500;margin-top:3px}.header-de{color:#ae5c0c;font-size:12px;font-weight:500;margin-top:3px}.header-custom{color:#19644d;font-size:12px;font-weight:500;margin-top:3px}.holiday-header{background:#e3f1e9}.suspended-column{background:#f3f9f6}.add-section{margin:24rpx 0}.add-section .add-btn{width:100%;font-size:28rpx;line-height:72rpx;height:72rpx}.conflict-summary{color:#ce6b0a;font-weight:700;font-size:28rpx;margin:28rpx 0 14rpx}.day-conflict{color:#d47410;font-weight:700;font-size:25rpx;margin-bottom:12rpx}.day-detail-group{margin:24rpx 0 40rpx}.day-detail-group .section-hint{margin-bottom:18rpx}.cloud-config{padding:18rpx;border:1px solid #d7e3ee;border-radius:10rpx;margin:20rpx 0}.import-message{font-size:25rpx;white-space:pre-wrap;margin:18rpx 0;color:#35526d}.extracted-text{font-size:22rpx;white-space:pre-wrap;word-break:break-all;line-height:1.6}.export-canvas{position:fixed;left:-3000px;top:0;width:1240px;height:1754px;pointer-events:none}.display-settings{padding:20rpx 24rpx}.grid-course{user-select:none}.preview-row .actions button{margin:0}.backup-buttons{flex-wrap:wrap}.backup-buttons button{min-width:150rpx}.course-head{gap:12rpx}.course-head .time{flex-shrink:0}.type{text-align:right}
+.week-center{min-width:0}.week-heading{white-space:nowrap;font-size:26rpx}.week-year{white-space:nowrap}.navbtn{flex-shrink:0}.today{flex-shrink:0}.day{flex-shrink:0;box-sizing:border-box}.days{width:auto;min-width:max-content}.day.vacation{background:#216cbd;color:#fff}.day.vacation-selected{box-shadow:inset 0 0 0 2px #b8c5d4,0 2px 6px #183b641a}.holiday-dots{display:flex;justify-content:center;gap:5px;height:10px;margin-top:5px}.holiday-dot{width:6px;height:6px;border-radius:50%}.cn-dot{background:#ed4848}.de-dot{background:#fa982e}.holiday-legend{display:flex;gap:14rpx;flex-wrap:wrap;color:#64748b;font-size:21rpx}.legend-cn{color:#cf3333}.legend-de{color:#c97816}.notice{padding:16rpx;background:#fff4dd;color:#8d601d;border-radius:10rpx;line-height:1.6;font-size:23rpx;margin:14rpx 0}.settings-toggle{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:27rpx;min-height:48rpx}.settings-content{margin-top:18rpx}.school-settings,.holiday-settings{border-top:1px solid #e2e8f0;margin-top:26rpx;padding-top:24rpx}.setting-label{margin-top:20rpx}.small-secondary{font-size:24rpx;color:#216cbd;background:#edf3fb;margin:14rpx 0}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:24rpx;margin:20rpx 0}.custom-holiday{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #eee;padding:16rpx 0;font-size:25rpx}.custom-holiday button{flex-shrink:0;margin:0}.timetable-header{height:auto;min-height:70px;align-items:stretch}.grid-day-header{font-size:17px;white-space:normal;overflow-wrap:anywhere}.header-cn{color:#be3030;font-size:12px;font-weight:500;margin-top:3px}.header-de{color:#ae5c0c;font-size:12px;font-weight:500;margin-top:3px}.header-custom{color:#19644d;font-size:12px;font-weight:500;margin-top:3px}.holiday-header{background:#e3f1e9}.suspended-column{background:#f3f9f6}.add-section{margin:24rpx 0}.add-section .add-btn{width:100%;font-size:28rpx;line-height:72rpx;height:72rpx}.conflict-summary{color:#ce6b0a;font-weight:700;font-size:28rpx;margin:28rpx 0 14rpx}.day-conflict{color:#d47410;font-weight:700;font-size:25rpx;margin-bottom:12rpx}.day-detail-group{margin:24rpx 0 40rpx}.day-detail-group .section-hint{margin-bottom:18rpx}.cloud-config{padding:18rpx;border:1px solid #d7e3ee;border-radius:10rpx;margin:20rpx 0}.import-message{font-size:25rpx;white-space:pre-wrap;margin:18rpx 0;color:#35526d}.extracted-text{font-size:22rpx;white-space:pre-wrap;word-break:break-all;line-height:1.6}.export-canvas{position:fixed;left:-3000px;top:0;width:1240px;height:1754px;pointer-events:none}.display-settings{padding:20rpx 24rpx}.grid-course{user-select:none}.preview-row .actions button{margin:0}.backup-buttons{flex-wrap:wrap}.backup-buttons button{min-width:150rpx}.course-head{gap:12rpx}.course-head .time{flex-shrink:0}.type{text-align:right}
 @media (min-width:750px){.page{padding:24px 28px 60px;font-size:16px}.headline{font-size:36px}.eyebrow{font-size:13px}.subhead,.mini-desc,.field-label,.section-hint{font-size:14px}.week-heading{font-size:18px}.week-year{font-size:13px}.section-title{font-size:22px}.settings-toggle,.backup-title{font-size:18px}.course-name{font-size:20px}.time{font-size:18px}.info,.note,.display-day,.switch-row,.display-picker{font-size:16px}.day{width:90px}.days{gap:12px}.week-nav{max-width:760px;margin:0 auto}.display-times{max-width:680px}.display-days{gap:10px 24px}.actions .act{font-size:14px}.grid-heading{margin:24px 0 12px}}
 /* 覆盖新版基础库为普通 button 注入的固定宽度。 */
 .page button{width:auto!important;box-sizing:border-box}
@@ -64,7 +64,7 @@
 
 
 .calendar-actions button{min-height:38px;line-height:38px}.study-nav .back{margin:0!important;flex-shrink:0}.compact-grid .time-header,.compact-grid .grid-time-axis{width:44px;min-width:44px}.compact-grid .hour-label{font-size:10px;left:2px}.compact-grid .grid-day-header{font-size:13px;padding:10px 2px}.compact-grid .grid-date{font-size:10px}.compact-course{padding:7px 4px}.compact-title{font-size:12px;-webkit-line-clamp:5}.compact-room{font-size:11px;margin-top:6px}.number-course{padding:0;border-left-width:2px}.number-course .course-number{font-size:11px}.compact-course .course-reminder{padding:2px;font-size:9px}
-@media(min-width:600px){.eyebrow{font-size:12px;letter-spacing:2px}.week-nav{padding:10px;gap:10px;border-radius:18px}.week-nav .navbtn{width:42px!important;flex:0 0 42px;min-width:42px;height:42px;line-height:40px;font-size:28px;border-radius:12px}.week-nav .today{width:66px!important;flex:0 0 66px;min-width:0;height:40px;line-height:40px;font-size:13px;padding:0 8px}.week-heading{font-size:18px}.week-year{font-size:12px}.day-scroll{margin:16px 0 20px}.days{gap:10px}.day{width:74px;min-height:68px;font-size:14px;border-radius:14px}.date{font-size:14px;margin-top:5px}.holiday-legend{font-size:12px;gap:12px}.grid-heading{margin:20px 0 10px}.display-settings{margin:12px 0 18px;padding:14px 18px}.settings-toggle{min-height:28px;font-size:16px}.section-title{font-size:22px}.mini-desc,.field-label,.section-hint{font-size:13px}.add-section{margin:18px 0}.add-section .add-btn{font-size:16px;height:44px;line-height:44px}.display-picker,.display-day,.switch-row{font-size:14px}.display-day{min-width:210px}.display-actions button{font-size:14px;padding:0 18px}.settings-content{margin-top:16px}.backup-buttons{gap:8px;margin-top:18px}.backup-buttons button{font-size:13px;line-height:40px;min-width:120px}.url-input{padding:14px;font-size:15px;margin:12px 0}.secondary-link{font-size:13px;padding:10px}.preview-row{font-size:14px}.conflict-summary{font-size:18px}.day-conflict{font-size:15px}.type{font-size:12px;padding:5px 10px}.school-settings input,.holiday-form input{font-size:14px;padding:12px}}
+@media(min-width:600px){.eyebrow{font-size:12px;letter-spacing:2px}.week-nav{padding:10px;gap:10px;border-radius:18px}.week-nav .navbtn{width:42px!important;flex:0 0 42px;min-width:42px;height:42px;line-height:40px;font-size:28px;border-radius:12px}.week-nav .today{width:66px!important;flex:0 0 66px;min-width:0;height:40px;line-height:40px;font-size:13px;padding:0 8px}.week-heading{font-size:18px}.week-year{font-size:12px}.day-scroll{margin:16px 0 20px}.days{gap:10px}.day{width:74px;min-height:68px;font-size:14px;border-radius:14px}.date{font-size:14px;margin-top:5px}.holiday-legend{font-size:12px;gap:12px}.grid-heading{margin:20px 0 10px}.display-settings{margin:12px 0 18px;padding:14px 18px}.settings-toggle{min-height:28px;font-size:16px}.section-title{font-size:22px}.mini-desc,.field-label,.section-hint{font-size:13px}.add-section{margin:18px 0}.add-section .add-btn{font-size:16px;height:44px;line-height:44px}.display-picker,.display-day,.switch-row{font-size:14px}.display-day{min-width:210px}.display-actions button{font-size:14px;padding:0 18px}.settings-content{margin-top:16px}.backup-buttons{gap:8px;margin-top:18px}.backup-buttons button{font-size:13px;line-height:40px;min-width:120px}.url-input{padding:14px;font-size:15px;margin:12px 0}.secondary-link{font-size:13px;padding:10px}.preview-row{font-size:14px}.conflict-summary{font-size:18px}.day-conflict{font-size:15px}.type{font-size:12px;padding:5px 10px}}
 
 /* Tablets use the measured container as the entire week's width. */
 .timetable-scroll{box-sizing:border-box}
@@ -95,6 +95,50 @@
 .alert-deadline{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;line-height:1.3}
 .exam-alert{background:#eee8fc;color:#6d55aa;border-bottom:1px solid #d9cef2}
 .compact-course .course-alerts{margin-left:-4px;margin-right:-4px}
+
+.agenda{background:#fff;border:1px solid #e0e7f0;border-radius:16px;margin:0 0 14px}
+.agenda button{width:100%;margin:0;box-sizing:border-box;line-height:1.45;text-align:left;background:transparent;color:#213754}
+.agenda button::after{border:0}
+.agenda .agenda-toggle{display:flex;align-items:center;gap:10px;min-height:58px;padding:9px 12px;border-radius:16px}
+.agenda-icon{flex:none;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#eaf2ff;color:#2765a5;font-size:21px}
+.agenda-heading{flex:1;min-width:0}
+.agenda-title{font-size:15px;font-weight:700}
+.agenda-count{color:#5b6f88;font-size:12px;margin-top:2px}
+.agenda-action{flex:none;color:#2765a5;font-size:12px;font-weight:600}
+.agenda-body{border-top:1px solid #edf1f6;padding:0 12px}
+.agenda-empty{padding:12px 0;color:#5b6f88;font-size:13px;line-height:1.6}
+.agenda .agenda-row{padding:12px 0;border-bottom:1px solid #edf1f6;border-radius:0;white-space:normal}
+.agenda .agenda-row:last-child{border-bottom:0}
+.agenda-row-heading,.agenda-detail{display:flex;flex-wrap:wrap;align-items:center;gap:5px 9px}
+.agenda-kind,.agenda-status{font-size:12px;font-weight:600}
+.agenda-kind{padding:2px 7px;border-radius:6px}
+.agenda-exam{background:#ede8fa;color:#6548a0}
+.agenda-homework{background:#fff1da;color:#80541c}
+.agenda-status{color:#5b6f88}
+.agenda-urgent{color:#a2372a}
+.agenda-item-title{font-size:15px;font-weight:700;margin-top:5px;overflow-wrap:anywhere;word-break:break-word}
+.agenda-course,.agenda-detail{font-size:12px;color:#5b6f88;margin-top:3px;overflow-wrap:anywhere;word-break:break-word}
+.agenda .agenda-more{min-height:44px;padding:8px 0;text-align:center;color:#2765a5;font-size:13px}
+@media(min-width:600px){.agenda .agenda-toggle{padding-left:16px;padding-right:16px}.agenda-body{padding:0 16px}}
+
+.agenda-mask{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:14px;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+.agenda-backdrop{position:absolute;inset:0;background:rgba(22,29,49,.46)}
+.agenda-dialog{position:relative;width:100%;max-width:480px;max-height:100%;min-width:0;display:flex;flex-direction:column;box-sizing:border-box;border:2px solid var(--agenda-border);border-radius:19px;overflow:hidden;background:#fff;box-shadow:0 16px 46px #14213d38}
+.agenda-dialog-exam{--agenda-ink:#6548a0;--agenda-tint:#f3eefc;--agenda-tag:#e7dcfa;--agenda-border:#bea8e7}
+.agenda-dialog-homework{--agenda-ink:#80541c;--agenda-tint:#fff6e6;--agenda-tag:#ffebc8;--agenda-border:#e1bb79}
+.agenda-dialog-header{display:flex;align-items:center;gap:8px;flex:none;background:var(--agenda-tint);color:var(--agenda-ink);padding:6px 10px 6px 16px}
+.agenda-dialog-status{flex:1;min-width:0;font-size:13px;font-weight:600}
+.agenda-dialog-tag{flex:none;background:var(--agenda-tag);padding:4px 9px;border-radius:8px;font-size:12px;font-weight:700}
+.agenda-dialog .agenda-gear{min-width:44px;height:44px;line-height:44px;font-size:23px;padding:0;margin:0;flex:none;border-radius:10px;background:#ffffffaa;color:var(--agenda-ink)}
+.agenda-dialog-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px;box-sizing:border-box;word-break:break-word;overflow-wrap:anywhere}
+.agenda-dialog-title{font-size:20px;font-weight:800;line-height:1.35}
+.agenda-dialog-course{font-size:13px;line-height:1.55;color:#526881;margin-top:6px}
+.agenda-facts{display:flex;flex-direction:column;gap:9px;border-radius:11px;padding:10px 12px;margin-top:14px;background:var(--agenda-tint);font-size:14px;line-height:1.5}
+.agenda-fact-label{display:block;color:var(--agenda-ink);font-size:12px;font-weight:700}
+.agenda-note{margin-top:14px}
+.agenda-note-copy{white-space:pre-wrap;font-size:14px;line-height:1.6;margin-top:5px}
+.agenda-dialog-footer{flex:none;display:flex;justify-content:flex-end;border-top:1px solid #edf1f6;padding:0 10px}
+.agenda-dialog-footer button{margin:0;padding:0 12px;background:transparent;color:var(--agenda-ink);font-size:13px;line-height:44px}
 @media(min-width:750px){.tablet-layout .hero{padding:20px 0 22px}.tablet-layout .calendar-panel{padding:14px 18px}.tablet-layout .days{gap:12px}.tablet-layout .day{min-height:68px;font-size:14px}.tablet-layout .date{font-size:14px}.tablet-layout .grid-heading{margin-top:18px}}
 .page{padding-left:calc(26rpx + var(--safe-left, 0px));padding-right:calc(26rpx + var(--safe-right, 0px))}
 .calendar-dialog{max-height:calc(100vh - 32px)}
@@ -102,3 +146,21 @@
 @media(max-height:500px){.calendar-dialog{max-height:calc(100vh - 16px)}}
 /* Native scroll-view needs an explicit height when horizontal scrolling is disabled. */
 .tablet-layout .day-scroll,.tablet-layout .days{height:76px}
+
+/* Native inputs need a full height without vertical padding. */
+.settings-inputs{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}
+.settings-field{flex:1 1 240px;min-width:0}
+.settings-input,.url-input{width:100%;height:44px;min-height:44px;line-height:normal;padding:0 12px;font-size:15px;border-radius:8px;background:#f2f5fa}
+.holiday-form{margin-top:18px}
+.local-settings{margin:8px 0 12px;border:1px solid #e0e8f2;border-radius:8px;padding:0 12px}
+.local-toggle,.local-option{display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px;line-height:1.45}
+.local-toggle{justify-content:space-between;color:#275e97}
+.local-option checkbox{flex-shrink:0;transform:scale(.82);transform-origin:left center}
+.local-settings .mini-desc{margin:2px 0 10px}
+@media(max-width:599px){.settings-field{flex-basis:100%}}
+
+.school-cancellations{background:#edf3fa;color:#385371;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:13px;line-height:1.5}
+.school-cancellations-title{font-weight:700;color:#224566}
+.school-cancellation{display:flex;flex-wrap:wrap;column-gap:12px;padding:6px 0;align-items:baseline}
+.school-cancellation-time{color:#58738f;font-size:12px}
+.grid-course-note{white-space:pre-wrap}
